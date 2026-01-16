@@ -1,0 +1,25 @@
+# dependencies
+node_modules
+
+# Next.js build output
+.next
+
+# environment variables
+.env
+.env.local
+.env.production
+
+# misc
+.DS_Store
+
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts

@@ -1,0 +1,240 @@
+@import "tailwindcss";
+
+/* =====================================
+   Bay Ave & Bear Ln – Clean White Theme
+   ===================================== */
+
+:root {
+  /* Brand palette */
+  --navy: #064789;       /* primary header / anchors */
+  --blue: #427aa1;       /* secondary UI */
+  --ice: #ebf2fa;        /* light background accents */
+  --green: #679436;      /* success */
+  --lime: #a5be00;       /* highlight / today */
+
+  /* Neutrals */
+  --white: #ffffff;
+  --ink: #0f172a;        /* main text */
+  --slate: #334155;      /* secondary text */
+  --border: #e5e7eb;
+
+  /* Surfaces */
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+
+  /* Shadows */
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* =====================================
+   Base
+   ===================================== */
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--white);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji",
+    "Segoe UI Emoji";
+}
+
+/* =====================================
+   Utility Surfaces (use these in JSX)
+   ===================================== */
+
+.surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+}
+
+.surface-muted {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+/* =====================================
+   FullCalendar – Clean, readable, solid
+   ===================================== */
+
+.fc {
+  font-family: inherit;
+}
+
+/* Toolbar */
+.fc .fc-toolbar-title {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+/* Buttons */
+.fc .fc-button {
+  background: var(--white) !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  padding: 0.45rem 0.75rem !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.fc .fc-button:hover {
+  background: var(--ice) !important;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+  background: var(--blue) !important;
+  color: white !important;
+  border-color: var(--blue) !important;
+}
+
+/* Calendar container */
+.fc .fc-view-harness,
+.fc .fc-scrollgrid {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Day headers */
+.fc .fc-col-header-cell {
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.fc .fc-col-header-cell-cushion {
+  padding: 10px 0;
+  color: var(--slate);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+/* Day cells */
+.fc .fc-daygrid-day {
+  border: 1px solid var(--border);
+  background: var(--white);
+}
+
+.fc .fc-daygrid-day-number {
+  padding: 8px;
+  font-weight: 600;
+  color: var(--slate);
+}
+
+/* Today highlight */
+.fc .fc-daygrid-day.fc-day-today {
+  background: rgba(165, 190, 0, 0.12);
+  box-shadow: inset 0 0 0 2px rgba(165, 190, 0, 0.45);
+}
+
+/* Selection drag */
+.fc .fc-highlight {
+  background: rgba(66, 122, 161, 0.18);
+}
+
+/* =====================================
+   EVENTS – SOLID, READABLE, NOT TRANSLUCENT
+   ===================================== */
+
+.fc .fc-event {
+  background: var(--navy) !important;
+  color: #ffffff !important;
+  border-radius: 999px !important;
+  padding: 6px 12px !important;
+  margin: 4px 6px !important;
+  border: none !important;
+  box-shadow: var(--shadow-sm);
+}
+
+.fc .fc-event-title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Hover */
+.fc .fc-event:hover {
+  background: var(--blue) !important;
+}
+
+/* =====================================
+   Optional: Cancel / destructive cue
+   (future use)
+   ===================================== */
+
+.fc-event.cancelled {
+  background: #cbd5e1 !important;
+  color: #1f2937 !important;
+}
+/* =====================================
+   TEXT VISIBILITY GUARANTEES
+   ===================================== */
+
+/* Force readable defaults */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: #0f172a; /* dark ink */
+}
+
+p,
+span,
+label,
+div {
+  color: #334155; /* slate */
+}
+
+/* Muted helper text */
+.text-muted,
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+  color: #475569 !important;
+}
+
+/* Ensure calendar titles & labels are visible */
+.fc,
+.fc * {
+  color: #0f172a;
+}
+
+/* Event text stays white */
+.fc .fc-event,
+.fc .fc-event * {
+  color: #ffffff !important;
+}
+
+/* Dropdowns & inputs */
+select,
+input,
+textarea {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e5e7eb;
+}
+
+select option {
+  color: #0f172a;
+}
+
+/* House label / small UI text */
+label {
+  font-weight: 600;
+  color: #334155;
+}
+
+
+
+
