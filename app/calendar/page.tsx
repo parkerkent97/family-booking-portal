@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import FullCalendar from "@fullcalendar/react";
@@ -55,7 +56,7 @@ function formatDate(dateStr: string) {
 }
 
 // HOUSE NAME COLOR (defined ONCE)
-function houseTextStyle(houseName: string) {
+function houseTextStyle(houseName: string): CSSProperties {
   const n = (houseName || "").toLowerCase();
   if (n.includes("112") && n.includes("bear")) return { color: "#065f46" }; // darker green
   if (n.includes("156") && n.includes("bay")) return { color: "#0f766e" }; // turquoise blue
@@ -863,6 +864,7 @@ export default function CalendarPage() {
     </main>
   );
 }
+
 
 
 

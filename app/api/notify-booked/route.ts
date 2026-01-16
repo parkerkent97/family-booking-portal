@@ -2,7 +2,17 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createClient } from "@supabase/supabase-js";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+/**
+ * Lazy Resend client factory so build doesn't explode
+ * when RESEND_API_KEY is missing/misconfigured.
+ */
+function getResendClient() {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error("Missing RESEND_API_KEY");
+  }
+  return new Resend(apiKey);
+}
 
 function supabaseServerClient(accessToken: string) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -67,7 +77,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, sent: 0 });
     }
 
-    const subject = `New booking: ${houseName} (${formatDate(startDate)} → ${formatDate(endDate)})`;
+    const subject = `New booking: ${houseName} (${formatDate(startDate)} → ${formatDate(
+      endDate
+    )})`;
 
     const safeNote = (note ?? "").toString().trim();
     const noteBlock = safeNote
@@ -95,23 +107,33 @@ export async function POST(req: Request) {
             <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
               <tr>
                 <td style="padding: 6px 0; color:#0f172a; font-weight:700;">House</td>
-                <td style="padding: 6px 0; color:#334155; text-align:right;">${escapeHtml(String(houseName))}</td>
+                <td style="padding: 6px 0; color:#334155; text-align:right;">${escapeHtml(
+                  String(houseName)
+                )}</td>
               </tr>
               <tr>
                 <td style="padding: 6px 0; color:#0f172a; font-weight:700;">Check-in</td>
-                <td style="padding: 6px 0; color:#334155; text-align:right;">${formatDate(String(startDate))}</td>
+                <td style="padding: 6px 0; color:#334155; text-align:right;">${formatDate(
+                  String(startDate)
+                )}</td>
               </tr>
               <tr>
                 <td style="padding: 6px 0; color:#0f172a; font-weight:700;">Check-out</td>
-                <td style="padding: 6px 0; color:#334155; text-align:right;">${formatDate(String(endDate))}</td>
+                <td style="padding: 6px 0; color:#334155; text-align:right;">${formatDate(
+                  String(endDate)
+                )}</td>
               </tr>
               <tr>
                 <td style="padding: 6px 0; color:#0f172a; font-weight:700;">Guests</td>
-                <td style="padding: 6px 0; color:#334155; text-align:right;">${escapeHtml(String(guestCount))}</td>
+                <td style="padding: 6px 0; color:#334155; text-align:right;">${escapeHtml(
+                  String(guestCount)
+                )}</td>
               </tr>
               <tr>
                 <td style="padding: 6px 0; color:#0f172a; font-weight:700;">Booked by</td>
-                <td style="padding: 6px 0; color:#334155; text-align:right;">${escapeHtml(String(bookedBy))}</td>
+                <td style="padding: 6px 0; color:#334155; text-align:right;">${escapeHtml(
+                  String(bookedBy)
+                )}</td>
               </tr>
               ${noteBlock}
             </table>
@@ -123,6 +145,8 @@ export async function POST(req: Request) {
         </div>
       </div>
     `;
+
+    const resend = getResendClient();
 
     const result = await resend.emails.send({
       from: "Bay Ave & Bear Ln <notifications@bayavebearln.com>",
@@ -140,4 +164,5 @@ export async function POST(req: Request) {
     );
   }
 }
+
 
