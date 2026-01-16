@@ -286,7 +286,6 @@ export default function CalendarPage() {
             guestCount: b.guest_count,
             note,
           },
-          // @ts-expect-error - FC supports this in practice
           tooltip,
         };
       });
