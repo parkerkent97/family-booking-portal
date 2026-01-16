@@ -140,7 +140,7 @@ export default function CalendarPage() {
     }
 
     // No name yet -> open required modal and stop flow
-    setNameUser({ id: user.id, email: user.email });
+    setNameUser({ id: user.id, email: user.email ?? null });
     setNameInput("");
     setNameError(null);
     setNameModalOpen(true);
