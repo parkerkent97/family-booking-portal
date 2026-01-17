@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import FullCalendar from "@fullcalendar/react";
 import type { DateSelectArg, EventClickArg, EventInput } from "@fullcalendar/core";
@@ -71,9 +72,6 @@ export default function CalendarPage() {
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-
-  // My upcoming bookings (Feature 1)
-  const [myBookings, setMyBookings] = useState<Booking[]>([]);
 
   // Create Booking modal state
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -228,7 +226,7 @@ export default function CalendarPage() {
   }, [refreshKey]);
 
   // -------------------------------
-  // LOAD BOOKINGS (for selected house)
+  // LOAD BOOKINGS
   // -------------------------------
   useEffect(() => {
     const loadBookings = async () => {
@@ -267,15 +265,17 @@ export default function CalendarPage() {
       const calendarEvents: EventInput[] = bookings.map((b) => {
         const prof = profilesById.get(b.created_by);
         const who = prof?.name || prof?.email || "Unknown";
-
-        const isMine = currentUserId && b.created_by === currentUserId;
-        const baseTitle = `${who} — ${b.guest_count} guest${b.guest_count === 1 ? "" : "s"}`;
-        const title = isMine ? `${baseTitle} (You)` : baseTitle; // Feature 2 label
+        // TITLE: no "(You)" anymore, just name/email + guests
+        const title = `${who} — ${b.guest_count} guest${b.guest_count === 1 ? "" : "s"}`;
 
         const note = (b.note ?? "").trim();
         const tooltip = note ? `${title}\n${note}` : title;
 
-        const color = prof?.color || pickColorForUser(b.created_by);
+        const baseColor = prof?.color || pickColorForUser(b.created_by);
+        const isMine = currentUserId && b.created_by === currentUserId;
+
+        // Your own bookings: same fill, but with a high-contrast outline
+        const borderColor = isMine ? "#facc15" : baseColor; // amber ring for "you"
 
         return {
           id: String(b.id),
@@ -283,8 +283,8 @@ export default function CalendarPage() {
           start: b.start_date,
           end: b.end_date,
           allDay: true,
-          backgroundColor: color,
-          borderColor: isMine ? "#0f172a" : color, // stronger border for your bookings
+          backgroundColor: baseColor,
+          borderColor,
           textColor: "#ffffff",
           extendedProps: {
             bookingId: b.id,
@@ -301,36 +301,6 @@ export default function CalendarPage() {
 
     loadBookings();
   }, [selectedHouseId, refreshKey, currentUserId]);
-
-  // -------------------------------
-  // LOAD "MY UPCOMING BOOKINGS" (Feature 1)
-  // -------------------------------
-  useEffect(() => {
-    const loadMyBookings = async () => {
-      const { data: authData } = await supabase.auth.getUser();
-      const user = authData.user;
-      if (!user) return;
-
-      const todayStr = new Date().toISOString().slice(0, 10);
-
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("id,house_id,created_by,guest_count,start_date,end_date,status,note")
-        .eq("created_by", user.id)
-        .eq("status", "active")
-        .gte("end_date", todayStr)
-        .order("start_date", { ascending: true });
-
-      if (error) {
-        console.warn("loadMyBookings error:", error.message);
-        return;
-      }
-
-      setMyBookings((data ?? []) as Booking[]);
-    };
-
-    loadMyBookings();
-  }, [refreshKey]);
 
   // -------------------------------
   // MODAL HELPERS
@@ -606,16 +576,6 @@ export default function CalendarPage() {
 
   const selectedHouseName = selectedHouse?.name ?? "";
 
-  // "My bookings" + house names stitched together for display
-  const myUpcomingBookings = useMemo(
-    () =>
-      myBookings.map((b) => ({
-        ...b,
-        houseName: houses.find((h) => h.id === b.house_id)?.name ?? "Unknown house",
-      })),
-    [myBookings, houses]
-  );
-
   const canCancelViewedBooking =
     !!viewBooking && !!currentUserId && viewBooking.createdBy === currentUserId;
 
@@ -633,75 +593,41 @@ export default function CalendarPage() {
             </p>
           </div>
 
-          <div className="w-full sm:w-72">
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              House
-            </label>
-            <select
-              className="w-full rounded-lg border border-slate-200 bg-white p-3 text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
-              value={selectedHouseId ?? ""}
-              onChange={(e) => setSelectedHouseId(Number(e.target.value))}
-            >
-              {houses.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.name}
-                </option>
-              ))}
-            </select>
+          <div className="w-full sm:w-72 space-y-2">
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                House
+              </label>
+              <select
+                className="w-full rounded-lg border border-slate-200 bg-white p-3 text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
+                value={selectedHouseId ?? ""}
+                onChange={(e) => setSelectedHouseId(Number(e.target.value))}
+              >
+                {houses.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Link to house rules */}
+            <div className="flex justify-end">
+              <Link
+                href="/rules"
+                className="text-sm font-semibold text-[#064789] hover:underline"
+              >
+                View house rules
+              </Link>
+            </div>
           </div>
         </div>
 
-        {/* YOUR UPCOMING STAYS (Feature 1) */}
-        {myUpcomingBookings.length > 0 && (
-          <section className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-              Your upcoming stays
-            </h2>
-            <div className="space-y-2">
-              {myUpcomingBookings.map((b) => (
-                <div
-                  key={b.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-white px-3 py-2 text-sm shadow-sm"
-                >
-                  <div className="flex flex-col">
-                    <span className="font-semibold text-slate-900">
-                      {b.houseName}
-                    </span>
-                    <span className="text-slate-600">
-                      {formatDate(b.start_date)} – {formatDate(b.end_date)}
-                    </span>
-                    <span className="text-slate-500">
-                      {b.guest_count} guest{b.guest_count === 1 ? "" : "s"}
-                    </span>
-                    {b.note && (
-                      <span className="mt-1 text-xs text-slate-500">
-                        Note: {b.note}
-                      </span>
-                    )}
-                  </div>
-
-                  <button
-                    className="rounded-md border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
-                    onClick={async () => {
-                      try {
-                        await cancelBooking(b.id);
-                      } catch {
-                        // errors already handled in cancelBooking
-                      }
-                    }}
-                  >
-                    Cancel booking
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
         <div className="surface p-4">
-          <div className="fc-house-title text-center -mt-5 mb-2">
+          {/* House name centered above the calendar, back to the earlier spacing/sizing */}
+          <div className="fc-house-title text-center -mt-1 mb-3">
             <span
-              className="text-lg sm:text-5xl font-extrabold tracking-tight"
+              className="text-lg sm:text-xl font-extrabold tracking-tight"
               style={houseTextStyle(selectedHouseName)}
             >
               {selectedHouseName}
@@ -956,6 +882,7 @@ export default function CalendarPage() {
     </main>
   );
 }
+
 
 
 
