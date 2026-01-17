@@ -228,6 +228,9 @@ export default function CalendarPage() {
   // -------------------------------
   // LOAD BOOKINGS
   // -------------------------------
+    // -------------------------------
+  // LOAD BOOKINGS
+  // -------------------------------
   useEffect(() => {
     const loadBookings = async () => {
       if (!selectedHouseId) return;
@@ -259,48 +262,49 @@ export default function CalendarPage() {
           return;
         }
 
-        (profileRows ?? []).forEach((p: any) => profilesById.set(p.id, p as Profile));
+        (profileRows ?? []).forEach((p: any) =>
+          profilesById.set(p.id, p as Profile)
+        );
       }
 
       const calendarEvents: EventInput[] = bookings.map((b) => {
-        const prof = profilesById.get(b.created_by);
-        const who = prof?.name || prof?.email || "Unknown";
-        // TITLE: no "(You)" anymore, just name/email + guests
-        const title = `${who} — ${b.guest_count} guest${b.guest_count === 1 ? "" : "s"}`;
+  const prof = profilesById.get(b.created_by);
+  const who = prof?.name || prof?.email || "Unknown";
 
-        const note = (b.note ?? "").trim();
-        const tooltip = note ? `${title}\n${note}` : title;
+  const title = `${who} — ${b.guest_count} guest${
+    b.guest_count === 1 ? "" : "s"
+  }`;
 
-        const baseColor = prof?.color || pickColorForUser(b.created_by);
-        const isMine = currentUserId && b.created_by === currentUserId;
+  const note = (b.note ?? "").trim();
+  const tooltip = note ? `${title}\n${note}` : title;
 
-        // Your own bookings: same fill, but with a high-contrast outline
-        const borderColor = isMine ? "#facc15" : baseColor; // amber ring for "you"
+  // 👇 per-user color (either from profile or deterministic hash)
+  const color = prof?.color || pickColorForUser(b.created_by);
 
-        return {
-          id: String(b.id),
-          title,
-          start: b.start_date,
-          end: b.end_date,
-          allDay: true,
-          backgroundColor: baseColor,
-          borderColor,
-          textColor: "#ffffff",
-          extendedProps: {
-            bookingId: b.id,
-            createdBy: b.created_by,
-            guestCount: b.guest_count,
-            note,
-          },
-          tooltip,
-        };
-      });
+  return {
+    id: String(b.id),
+    title,
+    start: b.start_date,
+    end: b.end_date,
+    allDay: true,
+    backgroundColor: color,
+    borderColor: color,
+    textColor: "#ffffff",
+    extendedProps: {
+      bookingId: b.id,
+      createdBy: b.created_by,
+      guestCount: b.guest_count,
+      note,
+    },
+    tooltip,
+  };
+});
 
       setEvents(calendarEvents);
     };
 
     loadBookings();
-  }, [selectedHouseId, refreshKey, currentUserId]);
+  }, [selectedHouseId, refreshKey]);
 
   // -------------------------------
   // MODAL HELPERS
@@ -634,7 +638,7 @@ export default function CalendarPage() {
             </span>
           </div>
 
-          <FullCalendar
+             <FullCalendar
             ref={calendarRef as any}
             plugins={[dayGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"
@@ -647,7 +651,17 @@ export default function CalendarPage() {
             selectMirror={true}
             select={onSelect}
             eventClick={onEventClick}
+            eventDidMount={(info) => {
+              // Add a special class to *your* bookings so we can style them
+              if (
+                currentUserId &&
+                info.event.extendedProps.createdBy === currentUserId
+              ) {
+                (info.el as HTMLElement).classList.add("my-booking-event");
+              }
+            }}
           />
+
         </div>
       </div>
 

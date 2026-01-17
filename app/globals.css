@@ -143,17 +143,17 @@ body {
   background: rgba(66, 122, 161, 0.18);
 }
 
-/* =====================================
-   EVENTS – SOLID, READABLE, NOT TRANSLUCENT
-   ===================================== */
-
-.fc .fc-event {
-  background: var(--navy) !important;
-  color: #ffffff !important;
-  border-radius: 999px !important;
-  padding: 6px 12px !important;
-  margin: 4px 6px !important;
-  border: none !important;
+/* ===============================
+   EVENTS — LET INLINE COLORS WIN
+   =============================== */
+.fc .fc-event,
+.fc .fc-daygrid-block-event {
+  border-radius: 9999px;      /* keep the pill shape */
+  padding: 6px 12px;
+  margin: 4px 6px;
+  border-width: 1px;
+  border-style: solid;
+  /* NOTE: no background / border-color here */
   box-shadow: var(--shadow-sm);
 }
 
@@ -161,6 +161,13 @@ body {
   font-weight: 600;
   letter-spacing: -0.01em;
 }
+
+/* Hover: just a subtle brightness, don't override color */
+.fc .fc-event:hover,
+.fc .fc-daygrid-block-event:hover {
+  filter: brightness(1.05);
+}
+
 
 /* Hover */
 .fc .fc-event:hover {
