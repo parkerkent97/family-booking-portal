@@ -724,28 +724,33 @@ export default function CalendarPage() {
             </span>
           </div>
 
-             <FullCalendar
-            ref={calendarRef as any}
-            plugins={[dayGridPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
-            height="auto"
-            eventOverlap={true}
-            dayMaxEvents={false}
-            eventDisplay="block"
-            events={events}
-            selectable={true}
-            selectMirror={true}
-            select={onSelect}
-            eventClick={onEventClick}
-            eventDidMount={(info) => {
-              // Add a special class to *your* bookings so we can style them
-              if (
-                currentUserId &&
-                info.event.extendedProps.createdBy === currentUserId
-              ) {
-                (info.el as HTMLElement).classList.add("my-booking-event");
-              }
-            }}
+            <FullCalendar
+  ref={calendarRef as any}
+  plugins={[dayGridPlugin, interactionPlugin]}
+  initialView="dayGridMonth"
+  height="auto"
+  eventOverlap={true}
+  // ✅ Limit visible events per day so rows stay uniform
+  dayMaxEvents={3}            // or true, or 2/4/etc. to taste
+  eventDisplay="block"
+  events={events}
+  selectable={true}
+  selectMirror={true}
+  select={onSelect}
+  eventClick={onEventClick}
+  // Optional: nicer behavior when clicking "+ more"
+  moreLinkClick="popover"
+  eventDidMount={(info) => {
+    // Add a special class to *your* bookings so we can style them
+    if (
+      currentUserId &&
+      info.event.extendedProps.createdBy === currentUserId
+    ) {
+      (info.el as HTMLElement).classList.add("my-booking-event");
+    }
+  }}
+/>
+
           />
 
         </div>
