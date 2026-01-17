@@ -235,6 +235,38 @@ label {
   color: #334155;
 }
 
+/* Mobile tweaks for FullCalendar */
+@media (max-width: 640px) {
+  /* Stack the header toolbar on small screens */
+  .fc .fc-toolbar.fc-header-toolbar {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  /* Slightly smaller month title on phones */
+  .fc .fc-toolbar-title {
+    font-size: 1.1rem;
+  }
+
+  /* Smaller day numbers so the grid doesn’t feel cramped */
+  .fc .fc-daygrid-day-number {
+    font-size: 0.75rem;
+    padding: 2px 4px;
+  }
+
+  /* Slightly reduce cell height */
+  .fc .fc-daygrid-day-frame {
+    padding: 2px;
+  }
+
+  /* Make event pills tighter on mobile */
+  .fc .fc-daygrid-event {
+    margin: 1px 0;
+    padding: 1px 3px;
+    font-size: 0.7rem;
+  }
+}
 
 
 
