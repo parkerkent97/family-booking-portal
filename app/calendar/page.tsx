@@ -30,6 +30,14 @@ type Profile = {
   is_admin?: boolean | null;
 };
 
+type MyUpcomingBooking = {
+  id: number;
+  houseId: number;
+  start: string;      // YYYY-MM-DD
+  end: string;        // YYYY-MM-DD
+  guestCount: number;
+};
+
 const USER_COLORS = [
   "#064789", "#427aa1", "#1e40af", "#0f766e", "#047857",
   "#679436", "#4d7c0f", "#a5be00", "#15803d", "#166534",
@@ -72,6 +80,8 @@ export default function CalendarPage() {
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [myUpcoming, setMyUpcoming] = useState<MyUpcomingBooking[]>([]);
+
 
   // Create Booking modal state
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -226,9 +236,43 @@ export default function CalendarPage() {
   }, [refreshKey]);
 
   // -------------------------------
-  // LOAD BOOKINGS
+  // LOAD *MY* UPCOMING BOOKINGS
   // -------------------------------
-    // -------------------------------
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const loadMyUpcoming = async () => {
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("id, house_id, start_date, end_date, guest_count, status")
+        .eq("created_by", currentUserId)
+        .eq("status", "active")
+        .gte("end_date", today)
+        .order("start_date", { ascending: true })
+        .limit(5);
+
+      if (error) {
+        console.warn("Failed to load upcoming bookings", error.message);
+        return;
+      }
+
+      const list: MyUpcomingBooking[] = (data ?? []).map((row: any) => ({
+        id: row.id,
+        houseId: row.house_id,
+        start: row.start_date,
+        end: row.end_date,
+        guestCount: row.guest_count,
+      }));
+
+      setMyUpcoming(list);
+    };
+
+    loadMyUpcoming();
+  }, [currentUserId, refreshKey]);
+
+  // -------------------------------
   // LOAD BOOKINGS
   // -------------------------------
   useEffect(() => {
@@ -626,6 +670,48 @@ export default function CalendarPage() {
             </div>
           </div>
         </div>
+                {/* YOUR UPCOMING BOOKINGS */}
+        {myUpcoming.length > 0 && (
+          <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">
+                  Your upcoming bookings
+                </h2>
+                <p className="mt-1 text-xs text-slate-600">
+                  Showing the next {myUpcoming.length} active booking
+                  {myUpcoming.length === 1 ? "" : "s"}.
+                </p>
+              </div>
+            </div>
+
+            <ul className="mt-3 space-y-2">
+              {myUpcoming.map((b) => {
+                const houseName =
+                  houses.find((h) => h.id === b.houseId)?.name ?? "House";
+
+                return (
+                  <li
+                    key={b.id}
+                    className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-xs sm:text-sm text-slate-700 shadow-sm"
+                  >
+                    <div>
+                      <div className="font-semibold text-slate-900">
+                        {houseName}
+                      </div>
+                      <div className="text-slate-600">
+                        {formatDate(b.start)} – {formatDate(b.end)}
+                      </div>
+                    </div>
+                    <div className="text-slate-600">
+                      {b.guestCount} guest{b.guestCount === 1 ? "" : "s"}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
         <div className="surface p-4">
           {/* House name centered above the calendar, back to the earlier spacing/sizing */}
