@@ -607,7 +607,7 @@ export default function CalendarPage() {
         </div>
 
         <div className="surface p-4">
-          <div className="fc-house-title text-center mt-2 mb-0">
+          <div className="fc-house-title text-center mt-6 mb-0">
             <span
               className="text-lg sm:text-5xl font-extrabold tracking-tight"
               style={houseTextStyle(selectedHouseName)}
