@@ -579,32 +579,42 @@ export default function CalendarPage() {
       <Toaster />
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
-              Bay Ave & Bear Ln Calendars
-            </h1>
-            <p className="text-sm sm:text-base mt-2 text-slate-600">
-              Choose a house to view bookings. Click and drag to book your stay. Click a booking to view details.
-            </p>
-          </div>
+  <div>
+    <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+      Bay Ave &amp; Bear Ln Calendars
+    </h1>
+    <p className="text-sm sm:text-base mt-2 text-slate-600">
+      Choose a house to view bookings. Click and drag to book your stay. Click a booking to view details.
+    </p>
+    <a
+      href="/rules"
+      className="inline-flex items-center mt-2 text-sm font-semibold text-[#064789] hover:text-[#427aa1]"
+    >
+      View house rules
+      <span aria-hidden="true" className="ml-1">
+        →
+      </span>
+    </a>
+  </div>
 
-          <div className="w-full sm:w-72">
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              House
-            </label>
-            <select
-              className="w-full rounded-lg border border-slate-200 bg-white p-3 text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
-              value={selectedHouseId ?? ""}
-              onChange={(e) => setSelectedHouseId(Number(e.target.value))}
-            >
-              {houses.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+  <div className="w-full sm:w-72">
+    <label className="block text-sm font-semibold text-slate-900 mb-2">
+      House
+    </label>
+    <select
+      className="w-full rounded-lg border border-slate-200 bg-white p-3 text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
+      value={selectedHouseId ?? ""}
+      onChange={(e) => setSelectedHouseId(Number(e.target.value))}
+    >
+      {houses.map((h) => (
+        <option key={h.id} value={h.id}>
+          {h.name}
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
+
 
         <div className="surface p-4">
           <div className="fc-house-title text-center mt-6 mb-0">
