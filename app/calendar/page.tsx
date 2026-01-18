@@ -81,7 +81,7 @@ export default function CalendarPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [myUpcoming, setMyUpcoming] = useState<MyUpcomingBooking[]>([]);
-
+  const [upcomingBusyId, setUpcomingBusyId] = useState<number | null>(null); // NEW: track cancel-in-progress for upcoming list
 
   // Create Booking modal state
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -312,37 +312,37 @@ export default function CalendarPage() {
       }
 
       const calendarEvents: EventInput[] = bookings.map((b) => {
-  const prof = profilesById.get(b.created_by);
-  const who = prof?.name || prof?.email || "Unknown";
+        const prof = profilesById.get(b.created_by);
+        const who = prof?.name || prof?.email || "Unknown";
 
-  const title = `${who} — ${b.guest_count} guest${
-    b.guest_count === 1 ? "" : "s"
-  }`;
+        const title = `${who} — ${b.guest_count} guest${
+          b.guest_count === 1 ? "" : "s"
+        }`;
 
-  const note = (b.note ?? "").trim();
-  const tooltip = note ? `${title}\n${note}` : title;
+        const note = (b.note ?? "").trim();
+        const tooltip = note ? `${title}\n${note}` : title;
 
-  // 👇 per-user color (either from profile or deterministic hash)
-  const color = prof?.color || pickColorForUser(b.created_by);
+        // per-user color (either from profile or deterministic hash)
+        const color = prof?.color || pickColorForUser(b.created_by);
 
-  return {
-    id: String(b.id),
-    title,
-    start: b.start_date,
-    end: b.end_date,
-    allDay: true,
-    backgroundColor: color,
-    borderColor: color,
-    textColor: "#ffffff",
-    extendedProps: {
-      bookingId: b.id,
-      createdBy: b.created_by,
-      guestCount: b.guest_count,
-      note,
-    },
-    tooltip,
-  };
-});
+        return {
+          id: String(b.id),
+          title,
+          start: b.start_date,
+          end: b.end_date,
+          allDay: true,
+          backgroundColor: color,
+          borderColor: color,
+          textColor: "#ffffff",
+          extendedProps: {
+            bookingId: b.id,
+            createdBy: b.created_by,
+            guestCount: b.guest_count,
+            note,
+          },
+          tooltip,
+        };
+      });
 
       setEvents(calendarEvents);
     };
@@ -670,7 +670,8 @@ export default function CalendarPage() {
             </div>
           </div>
         </div>
-                {/* YOUR UPCOMING BOOKINGS */}
+
+        {/* YOUR UPCOMING BOOKINGS */}
         {myUpcoming.length > 0 && (
           <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
             <div className="flex items-center justify-between gap-3">
@@ -702,10 +703,25 @@ export default function CalendarPage() {
                       <div className="text-slate-600">
                         {formatDate(b.start)} – {formatDate(b.end)}
                       </div>
+                      <div className="text-slate-600">
+                        {b.guestCount} guest{b.guestCount === 1 ? "" : "s"}
+                      </div>
                     </div>
-                    <div className="text-slate-600">
-                      {b.guestCount} guest{b.guestCount === 1 ? "" : "s"}
-                    </div>
+
+                    <button
+                      className="ml-3 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:brightness-110 disabled:opacity-60"
+                      disabled={upcomingBusyId === b.id}
+                      onClick={async () => {
+                        setUpcomingBusyId(b.id);
+                        try {
+                          await cancelBooking(b.id);
+                        } finally {
+                          setUpcomingBusyId(null);
+                        }
+                      }}
+                    >
+                      {upcomingBusyId === b.id ? "Cancelling..." : "Cancel"}
+                    </button>
                   </li>
                 );
               })}
@@ -724,7 +740,7 @@ export default function CalendarPage() {
             </span>
           </div>
 
-             <FullCalendar
+          <FullCalendar
             ref={calendarRef as any}
             plugins={[dayGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"
@@ -748,7 +764,6 @@ export default function CalendarPage() {
               }
             }}
           />
-
         </div>
       </div>
 
@@ -983,6 +998,7 @@ export default function CalendarPage() {
     </main>
   );
 }
+
 
 
 
