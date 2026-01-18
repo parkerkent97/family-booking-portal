@@ -33,8 +33,8 @@ type Profile = {
 type MyUpcomingBooking = {
   id: number;
   houseId: number;
-  start: string;      // YYYY-MM-DD
-  end: string;        // YYYY-MM-DD
+  start: string; // YYYY-MM-DD
+  end: string;   // YYYY-MM-DD
   guestCount: number;
 };
 
@@ -67,8 +67,8 @@ function formatDate(dateStr: string) {
 function houseTextStyle(houseName: string) {
   const n = (houseName || "").toLowerCase();
   if (n.includes("112") && n.includes("bear")) return { color: "#065f46" }; // darker green
-  if (n.includes("156") && n.includes("bay")) return { color: "#97F9F9" }; // turquoise blue
-  if (n.includes("155") && n.includes("bay")) return { color: "#75ABBC" }; // lighter green
+  if (n.includes("156") && n.includes("bay")) return { color: "#0f766e" }; // turquoise blue
+  if (n.includes("155") && n.includes("bay")) return { color: "#059669" }; // lighter green
   return { color: "#0f172a" };
 }
 
@@ -81,7 +81,7 @@ export default function CalendarPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [myUpcoming, setMyUpcoming] = useState<MyUpcomingBooking[]>([]);
-  const [upcomingBusyId, setUpcomingBusyId] = useState<number | null>(null); // NEW: track cancel-in-progress for upcoming list
+  const [upcomingBusyId, setUpcomingBusyId] = useState<number | null>(null);
 
   // Create Booking modal state
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -105,6 +105,13 @@ export default function CalendarPage() {
     note: string;
     createdBy: string;
   } | null>(null);
+
+  // EDIT mode state for the view modal
+  const [isEditingBooking, setIsEditingBooking] = useState(false);
+  const [editStart, setEditStart] = useState("");
+  const [editEnd, setEditEnd] = useState("");
+  const [editGuestCount, setEditGuestCount] = useState("");
+  const [editNote, setEditNote] = useState("");
 
   // First Login / Name Required modal state
   const [nameModalOpen, setNameModalOpen] = useState(false);
@@ -377,6 +384,7 @@ export default function CalendarPage() {
     setViewBooking(null);
     setViewError(null);
     setViewBusy(false);
+    setIsEditingBooking(false);
   };
 
   // Focus guests input when create modal opens
@@ -430,7 +438,9 @@ export default function CalendarPage() {
 
       const start = new Date(pendingStart + "T00:00:00");
       const end = new Date(pendingEnd + "T00:00:00");
-      const nights = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      const nights = Math.round(
+        (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+      );
 
       if (nights <= 0) {
         setModalError("Invalid date range.");
@@ -464,7 +474,8 @@ export default function CalendarPage() {
 
       // Email notification (non-blocking)
       try {
-        const houseName = houses.find((h) => h.id === selectedHouseId)?.name ?? "Unknown house";
+        const houseName =
+          houses.find((h) => h.id === selectedHouseId)?.name ?? "Unknown house";
         const bookedBy = user.email ?? "Unknown";
 
         if (accessToken) {
@@ -506,7 +517,9 @@ export default function CalendarPage() {
 
     const { data: row, error: fetchErr } = await supabase
       .from("bookings")
-      .select("id,created_by,status,guest_count,start_date,end_date,house_id,note")
+      .select(
+        "id,created_by,status,guest_count,start_date,end_date,house_id,note"
+      )
       .eq("id", bookingId)
       .maybeSingle();
 
@@ -542,7 +555,8 @@ export default function CalendarPage() {
 
     // Email notification (non-blocking)
     try {
-      const houseName = houses.find((h) => h.id === row.house_id)?.name ?? "Unknown house";
+      const houseName =
+        houses.find((h) => h.id === row.house_id)?.name ?? "Unknown house";
       const cancelledBy = user.email ?? "Unknown";
       const note = row.note ?? null;
 
@@ -561,6 +575,83 @@ export default function CalendarPage() {
       });
     } catch (e) {
       console.warn("Cancel email notify failed", e);
+    }
+  };
+
+  // -------------------------------
+  // EDIT BOOKING
+  // -------------------------------
+  const saveEditedBooking = async () => {
+    if (!viewBooking) return;
+    if (viewBusy) return;
+
+    if (!editStart || !editEnd) {
+      setViewError("Please select both check-in and check-out.");
+      return;
+    }
+
+    const guests = Number(editGuestCount);
+    if (!Number.isFinite(guests) || guests < 1) {
+      setViewError("Guest count must be a number ≥ 1.");
+      return;
+    }
+
+    const start = new Date(editStart + "T00:00:00");
+    const end = new Date(editEnd + "T00:00:00");
+    const nights = Math.round(
+      (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (nights <= 0) {
+      setViewError("Invalid date range.");
+      return;
+    }
+    if (nights > 7) {
+      setViewError("Max stay is 7 nights.");
+      return;
+    }
+
+    // Only creator or admin can edit
+    if (!currentUserId || (viewBooking.createdBy !== currentUserId && !isAdmin)) {
+      setViewError("You can only edit your own booking.");
+      return;
+    }
+
+    setViewBusy(true);
+    setViewError(null);
+
+    try {
+      const noteClean = editNote.trim() ? editNote.trim() : null;
+
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          start_date: editStart,
+          end_date: editEnd,
+          guest_count: guests,
+          note: noteClean,
+        })
+        .eq("id", viewBooking.bookingId);
+
+      if (error) {
+        setViewError(error.message);
+        return;
+      }
+
+      toast.success("Booking updated.");
+      setRefreshKey((k) => k + 1);
+      setIsEditingBooking(false);
+
+      // Keep the modal in sync with the new data
+      setViewBooking({
+        ...viewBooking,
+        start: editStart,
+        end: editEnd,
+        guestCount: guests,
+        note: noteClean ?? "",
+      });
+    } finally {
+      setViewBusy(false);
     }
   };
 
@@ -597,9 +688,11 @@ export default function CalendarPage() {
     const note = ((arg.event.extendedProps.note as string) || "").trim();
     const createdBy = String(arg.event.extendedProps.createdBy || "");
     const start = arg.event.startStr;
-    const end = arg.event.endStr;
+    const end = arg.event.endStr || arg.event.startStr;
 
     setViewError(null);
+    setIsEditingBooking(false);
+
     setViewBooking({
       bookingId,
       title: arg.event.title,
@@ -609,13 +702,23 @@ export default function CalendarPage() {
       note,
       createdBy,
     });
+
+    // Initialize edit fields with current values
+    const startDate = start.slice(0, 10);
+    const endDate = end.slice(0, 10);
+    setEditStart(startDate);
+    setEditEnd(endDate);
+    setEditGuestCount(String(guestCount));
+    setEditNote(note);
+
     setViewModalOpen(true);
   };
 
   // -------------------------------
   // CALENDAR SELECT
   // -------------------------------
-  const onSelect = (info: DateSelectArg) => openCreateModal(info.startStr, info.endStr);
+  const onSelect = (info: DateSelectArg) =>
+    openCreateModal(info.startStr, info.endStr);
 
   const selectedHouse = useMemo(
     () => houses.find((h) => h.id === selectedHouseId) ?? null,
@@ -626,6 +729,9 @@ export default function CalendarPage() {
 
   const canCancelViewedBooking =
     !!viewBooking && !!currentUserId && viewBooking.createdBy === currentUserId;
+
+  const canEditViewedBooking =
+    !!viewBooking && !!currentUserId && (viewBooking.createdBy === currentUserId || isAdmin);
 
   return (
     <main className="min-h-screen p-6 bg-white">
@@ -730,42 +836,41 @@ export default function CalendarPage() {
         )}
 
         <div className="surface p-4">
-  {/* House name centered and aligned with the month title */}
-  <div className="fc-house-title text-center mt-4 mb-2">
-    <span
-      className="text-2xl sm:text-3xl font-extrabold tracking-tight"
-      style={houseTextStyle(selectedHouseName)}
-    >
-      {selectedHouseName}
-    </span>
-  </div>
+          {/* House name centered & visually aligned with month title */}
+          <div className="fc-house-title text-center mt-4 mb-2">
+            <span
+              className="text-2xl sm:text-3xl font-extrabold tracking-tight"
+              style={houseTextStyle(selectedHouseName)}
+            >
+              {selectedHouseName}
+            </span>
+          </div>
 
-  <FullCalendar
-    ref={calendarRef as any}
-    plugins={[dayGridPlugin, interactionPlugin]}
-    initialView="dayGridMonth"
-    height="auto"
-    eventOverlap={true}
-    dayMaxEvents={3}
-    eventDisplay="block"
-    events={events}
-    selectable={true}
-    selectMirror={true}
-    select={onSelect}
-    eventClick={onEventClick}
-    moreLinkClick="popover"
-    eventDidMount={(info) => {
-      if (
-        currentUserId &&
-        info.event.extendedProps.createdBy === currentUserId
-      ) {
-        (info.el as HTMLElement).classList.add("my-booking-event");
-      }
-    }}
-  />
-</div>
-</div> {/* closes .max-w-5xl mx-auto */}
-
+          <FullCalendar
+            ref={calendarRef as any}
+            plugins={[dayGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            height="auto"
+            eventOverlap={true}
+            dayMaxEvents={3}
+            eventDisplay="block"
+            events={events}
+            selectable={true}
+            selectMirror={true}
+            select={onSelect}
+            eventClick={onEventClick}
+            moreLinkClick="popover"
+            eventDidMount={(info) => {
+              if (
+                currentUserId &&
+                info.event.extendedProps.createdBy === currentUserId
+              ) {
+                (info.el as HTMLElement).classList.add("my-booking-event");
+              }
+            }}
+          />
+        </div>
+      </div>
 
       {/* FIRST LOGIN: NAME REQUIRED MODAL */}
       {nameModalOpen && (
@@ -847,11 +952,15 @@ export default function CalendarPage() {
                   if (e.key === "Enter") confirmCreateBooking();
                 }}
               />
-              <p className="mt-2 text-xs text-slate-500">Max stay: 7 nights. Overlaps are allowed.</p>
+              <p className="mt-2 text-xs text-slate-500">
+                Max stay: 7 nights. Overlaps are allowed.
+              </p>
             </div>
 
             <div className="mt-5">
-              <label className="block text-sm font-semibold text-slate-900">Note (optional)</label>
+              <label className="block text-sm font-semibold text-slate-900">
+                Note (optional)
+              </label>
               <textarea
                 className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
                 rows={3}
@@ -892,7 +1001,7 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* VIEW / CANCEL / ADMIN DELETE MODAL */}
+      {/* VIEW / EDIT / CANCEL / ADMIN DELETE MODAL */}
       {viewModalOpen && viewBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closeViewModal} />
@@ -900,29 +1009,86 @@ export default function CalendarPage() {
             <h2 className="text-2xl font-semibold text-slate-900">Booking details</h2>
 
             <div className="mt-4 space-y-2 text-slate-700">
-              <div className="text-slate-900 font-semibold">{viewBooking.title}</div>
-
-              <div>
-                <span className="font-semibold text-slate-900">Check-in:</span>{" "}
-                {formatDate(viewBooking.start)}
-              </div>
-              <div>
-                <span className="font-semibold text-slate-900">Check-out:</span>{" "}
-                {formatDate(viewBooking.end)}
-              </div>
-              <div>
-                <span className="font-semibold text-slate-900">Guests:</span>{" "}
-                {viewBooking.guestCount}
+              <div className="text-slate-900 font-semibold">
+                {viewBooking.title}
               </div>
 
-              {viewBooking.note ? (
-                <div className="pt-2">
-                  <div className="font-semibold text-slate-900">Note</div>
-                  <div className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 whitespace-pre-wrap">
-                    {viewBooking.note}
+              {!isEditingBooking ? (
+                <>
+                  <div>
+                    <span className="font-semibold text-slate-900">Check-in:</span>{" "}
+                    {formatDate(viewBooking.start)}
                   </div>
-                </div>
-              ) : null}
+                  <div>
+                    <span className="font-semibold text-slate-900">Check-out:</span>{" "}
+                    {formatDate(viewBooking.end)}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-900">Guests:</span>{" "}
+                    {viewBooking.guestCount}
+                  </div>
+
+                  {viewBooking.note ? (
+                    <div className="pt-2">
+                      <div className="font-semibold text-slate-900">Note</div>
+                      <div className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 whitespace-pre-wrap">
+                        {viewBooking.note}
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-900">
+                        Check-in
+                      </label>
+                      <input
+                        type="date"
+                        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
+                        value={editStart}
+                        onChange={(e) => setEditStart(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-900">
+                        Check-out
+                      </label>
+                      <input
+                        type="date"
+                        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
+                        value={editEnd}
+                        onChange={(e) => setEditEnd(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-3">
+                    <label className="block text-sm font-semibold text-slate-900">
+                      Guests
+                    </label>
+                    <input
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
+                      value={editGuestCount}
+                      onChange={(e) => setEditGuestCount(e.target.value)}
+                      inputMode="numeric"
+                    />
+                  </div>
+
+                  <div className="pt-3">
+                    <label className="block text-sm font-semibold text-slate-900">
+                      Note (optional)
+                    </label>
+                    <textarea
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
+                      rows={3}
+                      value={editNote}
+                      onChange={(e) => setEditNote(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             {viewError && (
@@ -931,7 +1097,7 @@ export default function CalendarPage() {
               </div>
             )}
 
-            {!canCancelViewedBooking && !isAdmin && (
+            {!isEditingBooking && !canCancelViewedBooking && !isAdmin && (
               <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 Only the person who created this booking can cancel it.
               </div>
@@ -940,52 +1106,97 @@ export default function CalendarPage() {
             <div className="mt-7 flex items-center justify-end gap-3">
               <button
                 className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                onClick={closeViewModal}
+                onClick={() => {
+                  if (isEditingBooking) {
+                    // discard changes & go back to view mode
+                    setIsEditingBooking(false);
+                    setViewError(null);
+                    if (viewBooking) {
+                      setEditStart(viewBooking.start.slice(0, 10));
+                      setEditEnd(viewBooking.end.slice(0, 10));
+                      setEditGuestCount(String(viewBooking.guestCount));
+                      setEditNote(viewBooking.note);
+                    }
+                  } else {
+                    closeViewModal();
+                  }
+                }}
                 disabled={viewBusy}
               >
-                Close
+                {isEditingBooking ? "Discard changes" : "Close"}
               </button>
 
-              {canCancelViewedBooking && (
+              {isEditingBooking ? (
                 <button
-                  className="rounded-lg bg-red-600 px-5 py-2.5 font-semibold text-white hover:brightness-95 disabled:opacity-60"
+                  className="rounded-lg bg-[#679436] px-5 py-2.5 font-semibold text-white hover:brightness-95 disabled:opacity-60"
                   disabled={viewBusy}
-                  onClick={async () => {
-                    setViewBusy(true);
-                    setViewError(null);
-                    try {
-                      await cancelBooking(viewBooking.bookingId);
-                      closeViewModal();
-                    } catch (e: any) {
-                      setViewError(e?.message ?? "Cancel failed.");
-                    } finally {
-                      setViewBusy(false);
-                    }
-                  }}
+                  onClick={saveEditedBooking}
                 >
-                  {viewBusy ? "Cancelling..." : "Cancel booking"}
+                  {viewBusy ? "Saving..." : "Save changes"}
                 </button>
-              )}
+              ) : (
+                <>
+                  {canEditViewedBooking && (
+                    <button
+                      className="rounded-lg bg-[#427aa1] px-5 py-2.5 font-semibold text-white hover:brightness-105 disabled:opacity-60"
+                      disabled={viewBusy}
+                      onClick={() => {
+                        setIsEditingBooking(true);
+                        setViewError(null);
+                        if (viewBooking) {
+                          setEditStart(viewBooking.start.slice(0, 10));
+                          setEditEnd(viewBooking.end.slice(0, 10));
+                          setEditGuestCount(String(viewBooking.guestCount));
+                          setEditNote(viewBooking.note);
+                        }
+                      }}
+                    >
+                      Edit booking
+                    </button>
+                  )}
 
-              {isAdmin && (
-                <button
-                  className="rounded-lg bg-slate-900 px-5 py-2.5 font-semibold text-white hover:brightness-110 disabled:opacity-60"
-                  disabled={viewBusy}
-                  onClick={async () => {
-                    setViewBusy(true);
-                    setViewError(null);
-                    try {
-                      await adminDeleteBooking(viewBooking.bookingId);
-                      closeViewModal();
-                    } catch (e: any) {
-                      setViewError(e?.message ?? "Admin delete failed.");
-                    } finally {
-                      setViewBusy(false);
-                    }
-                  }}
-                >
-                  {viewBusy ? "Deleting..." : "Admin delete"}
-                </button>
+                  {canCancelViewedBooking && (
+                    <button
+                      className="rounded-lg bg-red-600 px-5 py-2.5 font-semibold text-white hover:brightness-95 disabled:opacity-60"
+                      disabled={viewBusy}
+                      onClick={async () => {
+                        setViewBusy(true);
+                        setViewError(null);
+                        try {
+                          await cancelBooking(viewBooking.bookingId);
+                          closeViewModal();
+                        } catch (e: any) {
+                          setViewError(e?.message ?? "Cancel failed.");
+                        } finally {
+                          setViewBusy(false);
+                        }
+                      }}
+                    >
+                      {viewBusy ? "Cancelling..." : "Cancel booking"}
+                    </button>
+                  )}
+
+                  {isAdmin && (
+                    <button
+                      className="rounded-lg bg-slate-900 px-5 py-2.5 font-semibold text-white hover:brightness-110 disabled:opacity-60"
+                      disabled={viewBusy}
+                      onClick={async () => {
+                        setViewBusy(true);
+                        setViewError(null);
+                        try {
+                          await adminDeleteBooking(viewBooking.bookingId);
+                          closeViewModal();
+                        } catch (e: any) {
+                          setViewError(e?.message ?? "Admin delete failed.");
+                        } finally {
+                          setViewBusy(false);
+                        }
+                      }}
+                    >
+                      {viewBusy ? "Deleting..." : "Admin delete"}
+                    </button>
+                  )}
+                </>
               )}
             </div>
 
@@ -998,6 +1209,7 @@ export default function CalendarPage() {
     </main>
   );
 }
+
 
 
 
