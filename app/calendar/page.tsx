@@ -730,42 +730,41 @@ export default function CalendarPage() {
         )}
 
         <div className="surface p-4">
-          {/* House name centered above the calendar, back to the earlier spacing/sizing */}
-          <div className="fc-house-title text-center -mt-1 mb-3">
-            <span
-              className="text-lg sm:text-xl font-extrabold tracking-tight"
-              style={houseTextStyle(selectedHouseName)}
-            >
-              {selectedHouseName}
-            </span>
-          </div>
+  {/* House name centered and aligned with the month title */}
+  <div className="fc-house-title text-center mt-4 mb-2">
+    <span
+      className="text-2xl sm:text-3xl font-extrabold tracking-tight"
+      style={houseTextStyle(selectedHouseName)}
+    >
+      {selectedHouseName}
+    </span>
+  </div>
 
-          <FullCalendar
-            ref={calendarRef as any}
-            plugins={[dayGridPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
-            height="auto"
-            eventOverlap={true}
-            dayMaxEvents={3}
-            eventDisplay="block"
-            events={events}
-            selectable={true}
-            selectMirror={true}
-            select={onSelect}
-            eventClick={onEventClick}
-            moreLinkClick="popover"
-            eventDidMount={(info) => {
-              // Add a special class to *your* bookings so we can style them
-              if (
-                currentUserId &&
-                info.event.extendedProps.createdBy === currentUserId
-              ) {
-                (info.el as HTMLElement).classList.add("my-booking-event");
-              }
-            }}
-          />
-        </div>
-      </div>
+  <FullCalendar
+    ref={calendarRef as any}
+    plugins={[dayGridPlugin, interactionPlugin]}
+    initialView="dayGridMonth"
+    height="auto"
+    eventOverlap={true}
+    dayMaxEvents={3}
+    eventDisplay="block"
+    events={events}
+    selectable={true}
+    selectMirror={true}
+    select={onSelect}
+    eventClick={onEventClick}
+    moreLinkClick="popover"
+    eventDidMount={(info) => {
+      if (
+        currentUserId &&
+        info.event.extendedProps.createdBy === currentUserId
+      ) {
+        (info.el as HTMLElement).classList.add("my-booking-event");
+      }
+    }}
+  />
+</div>
+
 
       {/* FIRST LOGIN: NAME REQUIRED MODAL */}
       {nameModalOpen && (
