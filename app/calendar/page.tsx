@@ -67,8 +67,8 @@ function formatDate(dateStr: string) {
 function houseTextStyle(houseName: string) {
   const n = (houseName || "").toLowerCase();
   if (n.includes("112") && n.includes("bear")) return { color: "#065f46" }; // darker green
-  if (n.includes("156") && n.includes("bay")) return { color: "#0f766e" }; // turquoise blue
-  if (n.includes("155") && n.includes("bay")) return { color: "#059669" }; // lighter green
+  if (n.includes("156") && n.includes("bay")) return { color: "#97F9F9" }; // turquoise blue
+  if (n.includes("155") && n.includes("bay")) return { color: "#75ABBC" }; // lighter green
   return { color: "#0f172a" };
 }
 
