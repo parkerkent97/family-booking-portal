@@ -764,6 +764,7 @@ export default function CalendarPage() {
     }}
   />
 </div>
+</div> {/* closes .max-w-5xl mx-auto */}
 
 
       {/* FIRST LOGIN: NAME REQUIRED MODAL */}
