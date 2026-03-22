@@ -8,20 +8,21 @@ import toast, { Toaster } from "react-hot-toast";
 type UsageRow = {
   houseId: number;
   houseName: string;
-  bookedNights: number;
-  totalNights: number;
-  usagePct: number;
+  month: string; // e.g. "2026-01"
+  daysWithBookings: number;
+  totalDays: number;
+  usageRate: number; // 0–1
 };
 
 type UsageResponse = {
-  monthStart: string;
-  monthEnd: string;
-  totalNights: number;
-  results: UsageRow[];
+  month: string;
+  totalDays: number;
+  rows: UsageRow[];
 };
 
-function formatMonthLabel(monthStart: string) {
-  const d = new Date(monthStart + "T00:00:00");
+function formatMonthLabel(month: string) {
+  const [year, monthNum] = month.split("-");
+  const d = new Date(`${year}-${monthNum}-01T00:00:00`);
   return d.toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
@@ -37,7 +38,6 @@ export default function UsagePage() {
   useEffect(() => {
     const load = async () => {
       try {
-        // 1) Ensure logged in
         const { data: authData } = await supabase.auth.getUser();
         if (!authData.user) {
           window.location.href = "/login";
@@ -46,7 +46,6 @@ export default function UsagePage() {
 
         const userId = authData.user.id;
 
-        // 2) Check admin flag
         const { data: profile, error: profErr } = await supabase
           .from("profiles")
           .select("is_admin")
@@ -66,20 +65,9 @@ export default function UsagePage() {
 
         setIsAdmin(true);
 
-        // 3) Get access token
-        const session = (await supabase.auth.getSession()).data.session;
-        const accessToken = session?.access_token;
-
-        if (!accessToken) {
-          setError("Missing access token");
-          return;
-        }
-
-        // 4) Call the usage API (defaults to last completed month)
+        // API route now uses GET
         const res = await fetch("/api/usage", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accessToken }),
+          method: "GET",
         });
 
         const json = await res.json();
@@ -152,8 +140,8 @@ export default function UsagePage() {
             </h1>
             {data && (
               <p className="mt-2 text-sm text-slate-600">
-                Month: {formatMonthLabel(data.monthStart)} (last completed
-                month). Usage = booked nights / total nights.
+                Month: {formatMonthLabel(data.month)} (last completed month).
+                Usage = booked nights / total nights.
               </p>
             )}
           </div>
@@ -165,7 +153,7 @@ export default function UsagePage() {
           </Link>
         </div>
 
-        {data && data.results.length > 0 ? (
+        {data && data.rows.length > 0 ? (
           <div className="surface p-4">
             <table className="w-full text-sm text-left text-slate-700">
               <thead>
@@ -181,14 +169,13 @@ export default function UsagePage() {
                 </tr>
               </thead>
               <tbody>
-                {data.results.map((row) => (
+                {data.rows.map((row) => (
                   <tr key={row.houseId} className="border-b border-slate-100">
                     <td className="py-2">{row.houseName}</td>
-                    <td className="py-2">{row.bookedNights}</td>
-                    <td className="py-2">{row.totalNights}</td>
+                    <td className="py-2">{row.daysWithBookings}</td>
+                    <td className="py-2">{row.totalDays}</td>
                     <td className="py-2">
-                      {row.usagePct.toFixed(1)}
-                      {"%"}
+                      {(row.usageRate * 100).toFixed(1)}%
                     </td>
                   </tr>
                 ))}

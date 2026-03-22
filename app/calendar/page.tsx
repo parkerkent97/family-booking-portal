@@ -66,9 +66,9 @@ function formatDate(dateStr: string) {
 // HOUSE NAME COLOR (defined ONCE)
 function houseTextStyle(houseName: string) {
   const n = (houseName || "").toLowerCase();
-  if (n.includes("112") && n.includes("bear")) return { color: "#065f46" }; // darker green
-  if (n.includes("156") && n.includes("bay")) return { color: "#29cec0" }; // turquoise blue
-  if (n.includes("155") && n.includes("bay")) return { color: "#0087d5" }; // lighter green
+  if (n.includes("112") && n.includes("bear")) return { color: "#065f46" };
+  if (n.includes("156") && n.includes("bay")) return { color: "#29cec0" };
+  if (n.includes("155") && n.includes("bay")) return { color: "#0087d5" };
   return { color: "#0f172a" };
 }
 
@@ -146,7 +146,6 @@ export default function CalendarPage() {
 
     setIsAdmin(!!profile?.is_admin);
 
-    // If they have a name, ensure color, continue
     if (profile?.name) {
       if (!profile.color) {
         await supabase
@@ -157,7 +156,6 @@ export default function CalendarPage() {
       return true;
     }
 
-    // No name yet -> open required modal and stop flow
     setNameUser({ id: user.id, email: user.email ?? null });
     setNameInput("");
     setNameError(null);
@@ -200,8 +198,6 @@ export default function CalendarPage() {
       setNameUser(null);
       setNameInput("");
       toast.success("Welcome!");
-
-      // Re-run load flow now that they have a profile name
       setRefreshKey((k) => k + 1);
     } finally {
       setNameSaving(false);
@@ -235,11 +231,12 @@ export default function CalendarPage() {
       const list = (data ?? []) as House[];
       setHouses(list);
 
-      if (list.length && selectedHouseId === null) setSelectedHouseId(list[0].id);
+      if (list.length && selectedHouseId === null) {
+        setSelectedHouseId(list[0].id);
+      }
     };
 
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
 
   // -------------------------------
@@ -249,7 +246,7 @@ export default function CalendarPage() {
     if (!currentUserId) return;
 
     const loadMyUpcoming = async () => {
-      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const today = new Date().toISOString().slice(0, 10);
 
       const { data, error } = await supabase
         .from("bookings")
@@ -313,23 +310,17 @@ export default function CalendarPage() {
           return;
         }
 
-        (profileRows ?? []).forEach((p: any) =>
-          profilesById.set(p.id, p as Profile)
-        );
+        (profileRows ?? []).forEach((p: any) => {
+          profilesById.set(p.id, p as Profile);
+        });
       }
 
       const calendarEvents: EventInput[] = bookings.map((b) => {
         const prof = profilesById.get(b.created_by);
         const who = prof?.name || prof?.email || "Unknown";
-
-        const title = `${who} — ${b.guest_count} guest${
-          b.guest_count === 1 ? "" : "s"
-        }`;
-
+        const title = `${who} — ${b.guest_count} guest${b.guest_count === 1 ? "" : "s"}`;
         const note = (b.note ?? "").trim();
         const tooltip = note ? `${title}\n${note}` : title;
-
-        // per-user color (either from profile or deterministic hash)
         const color = prof?.color || pickColorForUser(b.created_by);
 
         return {
@@ -387,14 +378,12 @@ export default function CalendarPage() {
     setIsEditingBooking(false);
   };
 
-  // Focus guests input when create modal opens
   useEffect(() => {
     if (!bookingModalOpen) return;
     const t = setTimeout(() => guestsInputRef.current?.focus(), 50);
     return () => clearTimeout(t);
   }, [bookingModalOpen]);
 
-  // ESC closes create/view modals (NOT the required-name modal)
   useEffect(() => {
     if (!bookingModalOpen && !viewModalOpen) return;
 
@@ -406,7 +395,6 @@ export default function CalendarPage() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingModalOpen, viewModalOpen]);
 
   // -------------------------------
@@ -426,9 +414,6 @@ export default function CalendarPage() {
         window.location.href = "/login";
         return;
       }
-
-      const session = (await supabase.auth.getSession()).data.session;
-      const accessToken = session?.access_token;
 
       const guestCount = Number(guestCountInput);
       if (!Number.isFinite(guestCount) || guestCount < 1) {
@@ -471,31 +456,6 @@ export default function CalendarPage() {
       toast.success("Booking created!");
       closeCreateModal();
       setRefreshKey((k) => k + 1);
-
-      // Email notification (non-blocking)
-      try {
-        const houseName =
-          houses.find((h) => h.id === selectedHouseId)?.name ?? "Unknown house";
-        const bookedBy = user.email ?? "Unknown";
-
-        if (accessToken) {
-          await fetch("/api/notify-booked", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              accessToken,
-              houseName,
-              startDate: pendingStart,
-              endDate: pendingEnd,
-              guestCount,
-              bookedBy,
-              note,
-            }),
-          });
-        }
-      } catch (e) {
-        console.warn("Email notify failed", e);
-      }
     } finally {
       setSaving(false);
     }
@@ -512,14 +472,9 @@ export default function CalendarPage() {
       return;
     }
 
-    const session = (await supabase.auth.getSession()).data.session;
-    const accessToken = session?.access_token;
-
     const { data: row, error: fetchErr } = await supabase
       .from("bookings")
-      .select(
-        "id,created_by,status,guest_count,start_date,end_date,house_id,note"
-      )
+      .select("id,created_by,status,guest_count,start_date,end_date,house_id,note")
       .eq("id", bookingId)
       .maybeSingle();
 
@@ -552,30 +507,6 @@ export default function CalendarPage() {
 
     toast.success("Booking cancelled.");
     setRefreshKey((k) => k + 1);
-
-    // Email notification (non-blocking)
-    try {
-      const houseName =
-        houses.find((h) => h.id === row.house_id)?.name ?? "Unknown house";
-      const cancelledBy = user.email ?? "Unknown";
-      const note = row.note ?? null;
-
-      await fetch("/api/notify-cancelled", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accessToken,
-          houseName,
-          startDate: row.start_date,
-          endDate: row.end_date,
-          guestCount: row.guest_count,
-          cancelledBy,
-          note,
-        }),
-      });
-    } catch (e) {
-      console.warn("Cancel email notify failed", e);
-    }
   };
 
   // -------------------------------
@@ -611,7 +542,6 @@ export default function CalendarPage() {
       return;
     }
 
-    // Only creator or admin can edit
     if (!currentUserId || (viewBooking.createdBy !== currentUserId && !isAdmin)) {
       setViewError("You can only edit your own booking.");
       return;
@@ -642,7 +572,6 @@ export default function CalendarPage() {
       setRefreshKey((k) => k + 1);
       setIsEditingBooking(false);
 
-      // Keep the modal in sync with the new data
       setViewBooking({
         ...viewBooking,
         start: editStart,
@@ -703,11 +632,8 @@ export default function CalendarPage() {
       createdBy,
     });
 
-    // Initialize edit fields with current values
-    const startDate = start.slice(0, 10);
-    const endDate = end.slice(0, 10);
-    setEditStart(startDate);
-    setEditEnd(endDate);
+    setEditStart(start.slice(0, 10));
+    setEditEnd(end.slice(0, 10));
     setEditGuestCount(String(guestCount));
     setEditNote(note);
 
@@ -765,7 +691,6 @@ export default function CalendarPage() {
               </select>
             </div>
 
-            {/* Link to house rules */}
             <div className="flex justify-end">
               <Link
                 href="/rules"
@@ -777,7 +702,6 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* YOUR UPCOMING BOOKINGS */}
         {myUpcoming.length > 0 && (
           <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
             <div className="flex items-center justify-between gap-3">
@@ -836,7 +760,6 @@ export default function CalendarPage() {
         )}
 
         <div className="surface p-4">
-          {/* House name centered & visually aligned with month title */}
           <div className="fc-house-title text-center mt-4 mb-2">
             <span
               className="text-2xl sm:text-3xl font-extrabold tracking-tight"
@@ -872,7 +795,6 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* FIRST LOGIN: NAME REQUIRED MODAL */}
       {nameModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={signOutAndGoLogin} />
@@ -921,7 +843,6 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* CREATE BOOKING MODAL */}
       {bookingModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closeCreateModal} />
@@ -1001,7 +922,6 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* VIEW / EDIT / CANCEL / ADMIN DELETE MODAL */}
       {viewModalOpen && viewBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closeViewModal} />
@@ -1108,7 +1028,6 @@ export default function CalendarPage() {
                 className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                 onClick={() => {
                   if (isEditingBooking) {
-                    // discard changes & go back to view mode
                     setIsEditingBooking(false);
                     setViewError(null);
                     if (viewBooking) {
@@ -1209,14 +1128,3 @@ export default function CalendarPage() {
     </main>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
