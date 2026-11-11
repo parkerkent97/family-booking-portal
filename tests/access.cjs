@@ -179,3 +179,12 @@ test('optional guest names are trimmed, may be cleared, and reject invalid input
   assert.throws(()=>bookingValues({...base,guest_names:42}));
   assert.throws(()=>bookingValues({...base,guest_names:'x'.repeat(2001)}));
 });
+test('usage API rejects non-admin sessions before reading occupancy',async()=>{
+ const usage=load('app/api/usage/route.ts');
+ const req={nextUrl:new URL('http://localhost/api/usage?month=2026-11')};
+ assert.equal((await usage.GET(req)).status,403);
+ await auth.setSession({id:'family',admin:false,named:true,version:1});
+ assert.equal((await usage.GET(req)).status,403);
+ await auth.setSession({id:'admin',admin:true,named:true,version:1});
+ assert.equal((await usage.GET({nextUrl:new URL('http://localhost/api/usage?month=bad')})).status,400);
+});

@@ -376,6 +376,7 @@ export default function CalendarPage() {
   );
 
   const [section, setSection] = useState<'calendar' | 'stays' | 'account'>('calendar');
+  useEffect(() => { const view = new URLSearchParams(window.location.search).get('view'); if(view === 'stays' || view === 'account') setSection(view); }, []);
   const [onlyMine, setOnlyMine] = useState(false);
   useEffect(() => {
     if (section !== 'calendar') return;
@@ -401,7 +402,7 @@ export default function CalendarPage() {
       <Toaster />
       <div className="app-shell">
         <header className="app-header"><div><h1>Bay Ave &amp; Bear Ln</h1></div><button className="profile-button" aria-label="Open account" onClick={()=>setSection('account')}>{currentName ? currentName.split(' ').map(n=>n[0]).slice(0,2).join('') : '…'}</button></header>
-        <nav className="view-tabs" aria-label="Main navigation">{(['calendar','stays','account'] as const).map(tab=><button key={tab} aria-current={section===tab?'page':undefined} onClick={()=>setSection(tab)}>{tab==='calendar'?'Calendar':tab==='stays'?'Stays':'Account'}</button>)}</nav>
+        <nav className="view-tabs" aria-label="Main navigation">{(['calendar','stays','account'] as const).map(tab=><button key={tab} aria-current={section===tab?'page':undefined} onClick={()=>setSection(tab)}>{tab==='calendar'?'Calendar':tab==='stays'?'Stays':'Account'}</button>)}{isAdmin && <Link href="/usage">Usage</Link>}</nav>
         {section==='account' && <section className="account-panel"><h2>Your account</h2><p>{currentName}</p><div className="account-links"><Link href="/access">Personal PIN <span>Manage access across devices →</span></Link><Link href="/rules">House rules <span>Everything to know before your stay →</span></Link>{isAdmin && <><Link href="/admin">Admin settings <span>Passwords, rules &amp; bookings →</span></Link><Link href="/usage">House usage <span>See how the houses are used →</span></Link></>}</div><button className="quiet-button" onClick={signOutAndGoLogin}>Sign out</button></section>}
         <div hidden={section!=='stays'}><div className="section-heading"><h2>Upcoming stays</h2><label className="mine-filter"><input type="checkbox" checked={onlyMine} onChange={e=>setOnlyMine(e.target.checked)}/>Only mine</label></div>
         <section className="mb-6 space-y-3" aria-label="Upcoming stays at both houses"><div className="grid sm:grid-cols-2 gap-4">{houses.map(h=>{
