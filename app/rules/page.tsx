@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { api } from "@/lib/client";
 import toast, { Toaster } from "react-hot-toast";
 
 type House = {
@@ -27,24 +27,9 @@ export default function RulesPage() {
   // Load houses + enforce login
   useEffect(() => {
     const load = async () => {
-      const { data: authData } = await supabase.auth.getUser();
-      if (!authData.user) {
-        window.location.href = "/login";
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("houses")
-        .select("id,name,rules")
-        .order("name", { ascending: true });
-
-      if (error) {
-        toast.error(error.message);
-        setLoading(false);
-        return;
-      }
-
-      const list = (data ?? []) as House[];
+      let list: House[];
+      try { list = (await api('/api/calendar')).houses; }
+      catch (e) { toast.error((e as Error).message); setLoading(false); return; }
       setHouses(list);
 
       if (list.length && selectedHouseId === null) {
@@ -116,7 +101,7 @@ export default function RulesPage() {
             </div>
           ) : !selectedHouse ? (
             <div className="text-center text-slate-500 py-10">
-              No houses found. Check your Supabase <code>houses</code> table.
+              No houses are available right now.
             </div>
           ) : rulesText ? (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-slate-800 whitespace-pre-wrap leading-relaxed">

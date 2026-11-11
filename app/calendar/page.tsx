@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import { api } from "@/lib/client";
 import FullCalendar from "@fullcalendar/react";
 import type { DateSelectArg, EventClickArg, EventInput } from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -15,6 +15,7 @@ type Booking = {
   id: number;
   house_id: number;
   created_by: string;
+  booked_by: string;
   guest_count: number;
   start_date: string; // YYYY-MM-DD
   end_date: string; // YYYY-MM-DD (exclusive)
@@ -25,7 +26,6 @@ type Booking = {
 type Profile = {
   id: string;
   name: string | null;
-  email: string;
   color: string | null;
   is_admin?: boolean | null;
 };
@@ -113,240 +113,37 @@ export default function CalendarPage() {
   const [editGuestCount, setEditGuestCount] = useState("");
   const [editNote, setEditNote] = useState("");
 
-  // First Login / Name Required modal state
-  const [nameModalOpen, setNameModalOpen] = useState(false);
-  const [nameInput, setNameInput] = useState("");
-  const [nameSaving, setNameSaving] = useState(false);
-  const [nameError, setNameError] = useState<string | null>(null);
-  const [nameUser, setNameUser] = useState<{ id: string; email: string | null } | null>(null);
-
+  const [currentName, setCurrentName] = useState('');
   const calendarRef = useRef<FullCalendar | null>(null);
   const guestsInputRef = useRef<HTMLInputElement | null>(null);
-
-  // -------------------------------
-  // PROFILE ENFORCEMENT (NAME REQUIRED)
-  // -------------------------------
-  const ensureProfileWithName = async () => {
-    const { data: authData } = await supabase.auth.getUser();
-    const user = authData.user;
-    if (!user) return false;
-
-    setCurrentUserId(user.id);
-
-    const { data: profile, error } = await supabase
-      .from("profiles")
-      .select("id,name,email,color,is_admin")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (error) {
-      toast.error(error.message);
-      return false;
-    }
-
-    setIsAdmin(!!profile?.is_admin);
-
-    if (profile?.name) {
-      if (!profile.color) {
-        await supabase
-          .from("profiles")
-          .update({ color: pickColorForUser(user.id) })
-          .eq("id", user.id);
-      }
-      return true;
-    }
-
-    setNameUser({ id: user.id, email: user.email ?? null });
-    setNameInput("");
-    setNameError(null);
-    setNameModalOpen(true);
-    return false;
-  };
-
-  const signOutAndGoLogin = async () => {
-    toast.error("Name is required to use the calendar.");
-    await supabase.auth.signOut();
-    window.location.href = "/login";
-  };
-
-  const saveRequiredName = async () => {
-    if (!nameUser) return;
-
-    const cleaned = nameInput.trim();
-    if (!cleaned) {
-      setNameError("Please enter your name to continue.");
-      return;
-    }
-
-    setNameSaving(true);
-    setNameError(null);
-
-    try {
-      const { error: upsertErr } = await supabase.from("profiles").upsert({
-        id: nameUser.id,
-        email: nameUser.email,
-        name: cleaned,
-        color: pickColorForUser(nameUser.id),
-      });
-
-      if (upsertErr) {
-        setNameError(upsertErr.message);
-        return;
-      }
-
-      setNameModalOpen(false);
-      setNameUser(null);
-      setNameInput("");
-      toast.success("Welcome!");
-      setRefreshKey((k) => k + 1);
-    } finally {
-      setNameSaving(false);
-    }
-  };
-
-  // -------------------------------
-  // LOAD HOUSES
-  // -------------------------------
+  const [allBookings, setAllBookings] = useState<Booking[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   useEffect(() => {
-    const load = async () => {
-      const { data: authData } = await supabase.auth.getUser();
-      if (!authData.user) {
-        window.location.href = "/login";
-        return;
-      }
-
-      const ok = await ensureProfileWithName();
-      if (!ok) return;
-
-      const { data, error } = await supabase
-        .from("houses")
-        .select("id,name")
-        .order("name", { ascending: true });
-
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-
-      const list = (data ?? []) as House[];
-      setHouses(list);
-
-      if (list.length && selectedHouseId === null) {
-        setSelectedHouseId(list[0].id);
-      }
-    };
-
-    load();
+    api('/api/calendar').then(data => {
+      setCurrentUserId(data.user.id);
+      setCurrentName(data.user.name);
+      setIsAdmin(data.user.admin);
+      setHouses(data.houses);
+      setSelectedHouseId(previous => previous ?? data.houses[0]?.id ?? null);
+      setAllBookings(data.bookings);
+      setProfiles(data.profiles);
+      setMyUpcoming(data.bookings.filter((b: Booking) => b.created_by === data.user.id && b.end_date >= new Date().toISOString().slice(0, 10))
+        .sort((a: Booking, b: Booking) => a.start_date.localeCompare(b.start_date)).slice(0, 5)
+        .map((b: Booking) => ({ id: b.id, houseId: b.house_id, start: b.start_date, end: b.end_date, guestCount: b.guest_count })));
+    }).catch(e => toast.error(e.message));
   }, [refreshKey]);
-
-  // -------------------------------
-  // LOAD *MY* UPCOMING BOOKINGS
-  // -------------------------------
   useEffect(() => {
-    if (!currentUserId) return;
-
-    const loadMyUpcoming = async () => {
-      const today = new Date().toISOString().slice(0, 10);
-
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("id, house_id, start_date, end_date, guest_count, status")
-        .eq("created_by", currentUserId)
-        .eq("status", "active")
-        .gte("end_date", today)
-        .order("start_date", { ascending: true })
-        .limit(5);
-
-      if (error) {
-        console.warn("Failed to load upcoming bookings", error.message);
-        return;
-      }
-
-      const list: MyUpcomingBooking[] = (data ?? []).map((row: any) => ({
-        id: row.id,
-        houseId: row.house_id,
-        start: row.start_date,
-        end: row.end_date,
-        guestCount: row.guest_count,
-      }));
-
-      setMyUpcoming(list);
-    };
-
-    loadMyUpcoming();
-  }, [currentUserId, refreshKey]);
-
-  // -------------------------------
-  // LOAD BOOKINGS
-  // -------------------------------
-  useEffect(() => {
-    const loadBookings = async () => {
-      if (!selectedHouseId) return;
-
-      const { data: bookingRows, error: bookingErr } = await supabase
-        .from("bookings")
-        .select("id,house_id,created_by,guest_count,start_date,end_date,status,note")
-        .eq("house_id", selectedHouseId)
-        .eq("status", "active");
-
-      if (bookingErr) {
-        toast.error(bookingErr.message);
-        return;
-      }
-
-      const bookings = (bookingRows ?? []) as Booking[];
-
-      const userIds = Array.from(new Set(bookings.map((b) => b.created_by)));
-      const profilesById = new Map<string, Profile>();
-
-      if (userIds.length) {
-        const { data: profileRows, error: profErr } = await supabase
-          .from("profiles")
-          .select("id,name,email,color")
-          .in("id", userIds);
-
-        if (profErr) {
-          toast.error(profErr.message);
-          return;
-        }
-
-        (profileRows ?? []).forEach((p: any) => {
-          profilesById.set(p.id, p as Profile);
-        });
-      }
-
-      const calendarEvents: EventInput[] = bookings.map((b) => {
-        const prof = profilesById.get(b.created_by);
-        const who = prof?.name || prof?.email || "Unknown";
-        const title = `${who} — ${b.guest_count} guest${b.guest_count === 1 ? "" : "s"}`;
-        const note = (b.note ?? "").trim();
-        const tooltip = note ? `${title}\n${note}` : title;
-        const color = prof?.color || pickColorForUser(b.created_by);
-
-        return {
-          id: String(b.id),
-          title,
-          start: b.start_date,
-          end: b.end_date,
-          allDay: true,
-          backgroundColor: color,
-          borderColor: color,
-          textColor: "#ffffff",
-          extendedProps: {
-            bookingId: b.id,
-            createdBy: b.created_by,
-            guestCount: b.guest_count,
-            note,
-          },
-          tooltip,
-        };
-      });
-
-      setEvents(calendarEvents);
-    };
-
-    loadBookings();
-  }, [selectedHouseId, refreshKey]);
+    setEvents(allBookings.filter(b => b.house_id === selectedHouseId).map(b => {
+      const color = profiles.find(p => p.id === b.created_by)?.color || pickColorForUser(b.created_by || String(b.id));
+      return { id: String(b.id), title: `${b.booked_by} — ${b.guest_count} guest${b.guest_count === 1 ? '' : 's'}`,
+        start: b.start_date, end: b.end_date, allDay: true, backgroundColor: color, borderColor: color, textColor: '#ffffff',
+        extendedProps: { bookingId: b.id, createdBy: b.created_by, guestCount: b.guest_count, note: b.note || '' } };
+    }));
+  }, [allBookings, profiles, selectedHouseId]);
+  const signOutAndGoLogin = async () => {
+    try { await api('/api/session', undefined, 'DELETE'); window.location.href = '/login'; }
+    catch (e) { toast.error((e as Error).message); }
+  };
 
   // -------------------------------
   // MODAL HELPERS
@@ -408,13 +205,6 @@ export default function CalendarPage() {
     setSaving(true);
 
     try {
-      const { data: authData } = await supabase.auth.getUser();
-      const user = authData.user;
-      if (!user) {
-        window.location.href = "/login";
-        return;
-      }
-
       const guestCount = Number(guestCountInput);
       if (!Number.isFinite(guestCount) || guestCount < 1) {
         setModalError("Guest count must be a number ≥ 1.");
@@ -438,24 +228,14 @@ export default function CalendarPage() {
 
       const note = noteInput.trim() ? noteInput.trim() : null;
 
-      const { error } = await supabase.from("bookings").insert({
-        house_id: selectedHouseId,
-        created_by: user.id,
-        guest_count: guestCount,
-        start_date: pendingStart,
-        end_date: pendingEnd,
-        status: "active",
-        note,
-      });
-
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
+      await api('/api/bookings', { action: 'create', house_id: selectedHouseId,
+        guest_count: guestCount, start_date: pendingStart, end_date: pendingEnd, note });
 
       toast.success("Booking created!");
       closeCreateModal();
       setRefreshKey((k) => k + 1);
+    } catch (e) {
+      setModalError((e as Error).message);
     } finally {
       setSaving(false);
     }
@@ -465,46 +245,7 @@ export default function CalendarPage() {
   // CANCEL BOOKING (normal cancel)
   // -------------------------------
   const cancelBooking = async (bookingId: number) => {
-    const { data: authData } = await supabase.auth.getUser();
-    const user = authData.user;
-    if (!user) {
-      window.location.href = "/login";
-      return;
-    }
-
-    const { data: row, error: fetchErr } = await supabase
-      .from("bookings")
-      .select("id,created_by,status,guest_count,start_date,end_date,house_id,note")
-      .eq("id", bookingId)
-      .maybeSingle();
-
-    if (fetchErr) {
-      toast.error(fetchErr.message);
-      return;
-    }
-    if (!row) {
-      toast.error("Booking not found.");
-      return;
-    }
-    if (row.created_by !== user.id) {
-      toast.error("You can only cancel your own booking.");
-      return;
-    }
-    if (row.status !== "active") {
-      toast.error("This booking is already cancelled.");
-      return;
-    }
-
-    const { error } = await supabase
-      .from("bookings")
-      .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
-      .eq("id", bookingId);
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
+    await api('/api/bookings', { action: 'cancel', bookingId });
     toast.success("Booking cancelled.");
     setRefreshKey((k) => k + 1);
   };
@@ -553,20 +294,8 @@ export default function CalendarPage() {
     try {
       const noteClean = editNote.trim() ? editNote.trim() : null;
 
-      const { error } = await supabase
-        .from("bookings")
-        .update({
-          start_date: editStart,
-          end_date: editEnd,
-          guest_count: guests,
-          note: noteClean,
-        })
-        .eq("id", viewBooking.bookingId);
-
-      if (error) {
-        setViewError(error.message);
-        return;
-      }
+      await api('/api/bookings', { action: 'edit', bookingId: viewBooking.bookingId,
+        start_date: editStart, end_date: editEnd, guest_count: guests, note: noteClean });
 
       toast.success("Booking updated.");
       setRefreshKey((k) => k + 1);
@@ -579,6 +308,8 @@ export default function CalendarPage() {
         guestCount: guests,
         note: noteClean ?? "",
       });
+    } catch (e) {
+      setViewError((e as Error).message);
     } finally {
       setViewBusy(false);
     }
@@ -588,22 +319,7 @@ export default function CalendarPage() {
   // ADMIN: PERMANENT DELETE BOOKING
   // -------------------------------
   const adminDeleteBooking = async (bookingId: number) => {
-    const session = (await supabase.auth.getSession()).data.session;
-    const accessToken = session?.access_token;
-    if (!accessToken) throw new Error("Missing access token");
-
-    const res = await fetch("/api/admin-delete-booking", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, bookingId }),
-    });
-
-    const body = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      throw new Error(body?.error ?? "Admin delete failed");
-    }
-
+    await api('/api/bookings', { action: 'delete', bookingId });
     toast.success("Booking permanently deleted.");
     setRefreshKey((k) => k + 1);
   };
@@ -654,7 +370,7 @@ export default function CalendarPage() {
   const selectedHouseName = selectedHouse?.name ?? "";
 
   const canCancelViewedBooking =
-    !!viewBooking && !!currentUserId && viewBooking.createdBy === currentUserId;
+    !!viewBooking && !!currentUserId && (viewBooking.createdBy === currentUserId || isAdmin);
 
   const canEditViewedBooking =
     !!viewBooking && !!currentUserId && (viewBooking.createdBy === currentUserId || isAdmin);
@@ -663,6 +379,11 @@ export default function CalendarPage() {
     <main className="min-h-screen p-6 bg-white">
       <Toaster />
       <div className="max-w-5xl mx-auto">
+        <nav className="mb-5 flex flex-wrap items-center gap-4 text-sm">
+          <span className="font-semibold">{currentName}</span>
+          {isAdmin && <><Link href="/admin" className="text-[#064789] underline">Admin settings</Link><Link href="/usage" className="text-[#064789] underline">House usage</Link></>}
+          <button onClick={signOutAndGoLogin} className="text-[#064789] underline">Sign out</button>
+        </nav>
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-4">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
@@ -745,7 +466,7 @@ export default function CalendarPage() {
                         setUpcomingBusyId(b.id);
                         try {
                           await cancelBooking(b.id);
-                        } finally {
+                        } catch (e) { toast.error((e as Error).message); } finally {
                           setUpcomingBusyId(null);
                         }
                       }}
@@ -794,54 +515,6 @@ export default function CalendarPage() {
           />
         </div>
       </div>
-
-      {nameModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={signOutAndGoLogin} />
-          <div className="relative w-full max-w-xl surface p-6">
-            <h2 className="text-2xl font-semibold text-slate-900">Welcome</h2>
-            <p className="mt-2 text-slate-600">Please enter your name to continue.</p>
-
-            <div className="mt-6">
-              <label className="block text-sm font-semibold text-slate-900">Name</label>
-              <input
-                className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                placeholder="Your name"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") saveRequiredName();
-                }}
-              />
-            </div>
-
-            {nameError && (
-              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {nameError}
-              </div>
-            )}
-
-            <div className="mt-7 flex items-center justify-end gap-3">
-              <button
-                className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                disabled={nameSaving}
-                onClick={signOutAndGoLogin}
-              >
-                Cancel
-              </button>
-
-              <button
-                className="rounded-lg bg-[#679436] px-5 py-2.5 font-semibold text-white hover:brightness-95 disabled:opacity-60"
-                disabled={nameSaving}
-                onClick={saveRequiredName}
-              >
-                {nameSaving ? "Saving..." : "Continue"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {bookingModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1019,7 +692,7 @@ export default function CalendarPage() {
 
             {!isEditingBooking && !canCancelViewedBooking && !isAdmin && (
               <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                Only the person who created this booking can cancel it.
+                The person who booked on this browser, or the admin, can change this booking.
               </div>
             )}
 

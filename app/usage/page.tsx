@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import { api } from "@/lib/client";
 import toast, { Toaster } from "react-hot-toast";
 
 type UsageRow = {
@@ -62,33 +62,8 @@ export default function UsagePage() {
   useEffect(() => {
     const checkAdminAndLoad = async () => {
       try {
-        const { data: authData } = await supabase.auth.getUser();
-        if (!authData.user) {
-          window.location.href = "/login";
-          return;
-        }
-
-        const userId = authData.user.id;
-
-        const { data: profile, error: profErr } = await supabase
-          .from("profiles")
-          .select("is_admin")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (profErr) {
-          setError(profErr.message);
-          setIsAdmin(false);
-          setLoading(false);
-          return;
-        }
-
-        if (!profile?.is_admin) {
-          setIsAdmin(false);
-          setLoading(false);
-          return;
-        }
-
+        const user = await api('/api/session');
+        if (!user.admin) { setIsAdmin(false); setLoading(false); return; }
         setIsAdmin(true);
       } catch (err: any) {
         setError(err?.message ?? "Unexpected error");
