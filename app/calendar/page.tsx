@@ -104,6 +104,7 @@ export default function CalendarPage() {
   } | null>(null);
 
   // EDIT mode state for the view modal
+  const [confirmAction, setConfirmAction] = useState<'cancel' | 'delete' | null>(null);
   const [isEditingBooking, setIsEditingBooking] = useState(false);
   const [editStart, setEditStart] = useState("");
   const [editEnd, setEditEnd] = useState("");
@@ -172,6 +173,7 @@ export default function CalendarPage() {
 
   const closeViewModal = () => {
     setViewModalOpen(false);
+    setConfirmAction(null);
     setViewBooking(null);
     setViewError(null);
     setViewBusy(false);
@@ -398,7 +400,7 @@ export default function CalendarPage() {
     <main className="booking-app" data-house-theme={houseTheme}>
       <Toaster />
       <div className="app-shell">
-        <header className="app-header"><div><p className="eyebrow">A place for family</p><h1>Bay Ave &amp; Bear Ln</h1></div><button className="profile-button" aria-label="Open account" onClick={()=>setSection('account')}>{currentName ? currentName.split(' ').map(n=>n[0]).slice(0,2).join('') : '…'}</button></header>
+        <header className="app-header"><div><h1>Bay Ave &amp; Bear Ln</h1></div><button className="profile-button" aria-label="Open account" onClick={()=>setSection('account')}>{currentName ? currentName.split(' ').map(n=>n[0]).slice(0,2).join('') : '…'}</button></header>
         <nav className="view-tabs" aria-label="Main navigation">{(['calendar','stays','account'] as const).map(tab=><button key={tab} aria-current={section===tab?'page':undefined} onClick={()=>setSection(tab)}>{tab==='calendar'?'Calendar':tab==='stays'?'Stays':'Account'}</button>)}</nav>
         {section==='account' && <section className="account-panel"><h2>Your account</h2><p>{currentName}</p><div className="account-links"><Link href="/access">Personal PIN <span>Manage access across devices →</span></Link><Link href="/rules">House rules <span>Everything to know before your stay →</span></Link>{isAdmin && <><Link href="/admin">Admin settings <span>Passwords, rules &amp; bookings →</span></Link><Link href="/usage">House usage <span>See how the houses are used →</span></Link></>}</div><button className="quiet-button" onClick={signOutAndGoLogin}>Sign out</button></section>}
         <div hidden={section!=='stays'}><div className="section-heading"><h2>Upcoming stays</h2><label className="mine-filter"><input type="checkbox" checked={onlyMine} onChange={e=>setOnlyMine(e.target.checked)}/>Only mine</label></div>
@@ -408,8 +410,8 @@ export default function CalendarPage() {
         })}</div></section>
         </div>
         <section hidden={section!=='calendar'} className="calendar-panel">
-          <div className="house-switch" aria-label="Choose a house">{houses.map(h=><button key={h.id} aria-pressed={selectedHouseId===h.id} onClick={()=>setSelectedHouseId(h.id)}>{h.name}</button>)}</div>
-          <div className="calendar-caption"><span className="house-mood">{houseTheme === 'coast' ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 15c3-4 5 4 8 0s5 4 8 0 4 0 4 0M2 20c3-4 5 4 8 0s5 4 8 0 4 0 4 0"/><circle cx="16" cy="6" r="3"/></svg> : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m2 20 8-15 5 9 3-5 4 11H2Zm5-9 3 2 3-2"/></svg>}{houseTheme === 'coast' ? 'Slow days by the shore' : 'A little closer to the mountains'}</span><Link href="/rules">House rules ↗</Link></div>
+          <div className="house-switch" aria-label="Choose a house">{houses.map(h=><button key={h.id} aria-pressed={selectedHouseId===h.id} onClick={()=>setSelectedHouseId(h.id)}><span className="house-mood">{!h.name.toLowerCase().includes('bear') ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 15c3-4 5 4 8 0s5 4 8 0 4 0 4 0M2 20c3-4 5 4 8 0s5 4 8 0 4 0 4 0"/><circle cx="16" cy="6" r="3"/></svg> : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m2 20 8-15 5 9 3-5 4 11H2Zm5-9 3 2 3-2"/></svg>}</span>{h.name}</button>)}</div>
+          <div className="calendar-caption"><Link href="/rules">House rules ↗</Link></div>
           <FullCalendar
             ref={calendarRef as any}
             plugins={[dayGridPlugin, interactionPlugin]}
@@ -437,14 +439,14 @@ export default function CalendarPage() {
           />
           <p className="calendar-hint">Select a stay for details. Overlapping visits are welcome.</p>
         </section>
-        {section!=='account' && <div className="booking-bar"><div><strong>{selectedHouseName || 'Your next stay'}</strong><span>Make time for a getaway</span></div><button disabled={!selectedHouseId} onClick={()=>openCreateModal('', '')}>Book a stay</button></div>}
+        {section!=='account' && <div className="booking-bar"><div><strong>{selectedHouseName || 'Your next stay'}</strong></div><button disabled={!selectedHouseId} onClick={()=>openCreateModal('', '')}>Book a stay</button></div>}
       </div>
 
       {bookingModalOpen && (
         <div className="booking-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closeCreateModal} />
           <div className="booking-sheet relative w-full max-w-xl max-h-[90dvh] overflow-y-auto surface p-6">
-            <h2 className="text-2xl font-semibold text-slate-900">Book your stay</h2>
+            <header className="sheet-heading"><h2>Book your stay</h2><button className="sheet-close" aria-label="Close booking form" disabled={saving} onClick={closeCreateModal}>×</button></header>
 
             <p className="mt-2 text-slate-600">{selectedHouseName} · Up to 7 nights</p>
             <div className="grid sm:grid-cols-2 gap-3 my-4"><label>Arrival<input aria-label="Arrival" type="date" value={pendingStart || ''} onChange={e=>setPendingStart(e.target.value)} className="block w-full border rounded-lg p-3" /></label><label>Departure<input aria-label="Departure" type="date" min={pendingStart || undefined} value={pendingEnd || ''} onChange={e=>setPendingEnd(e.target.value)} className="block w-full border rounded-lg p-3" /></label></div>
@@ -515,210 +517,22 @@ export default function CalendarPage() {
 
       {viewModalOpen && viewBooking && (
         <div className="booking-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={closeViewModal} />
-          <div className="booking-sheet relative w-full max-w-xl max-h-[90dvh] overflow-y-auto surface p-6">
-            <h2 className="text-2xl font-semibold text-slate-900">Booking details</h2>
-
-            <div className="mt-4 space-y-2 text-slate-700">
-              <div className="text-slate-900 font-semibold">
-                {viewBooking.title}
-              </div>
-
-              {!isEditingBooking ? (
-                <>
-                  <div>
-                    <span className="font-semibold text-slate-900">Check-in:</span>{" "}
-                    {formatDate(viewBooking.start)}
-                  </div>
-                  <div>
-                    <span className="font-semibold text-slate-900">Check-out:</span>{" "}
-                    {formatDate(viewBooking.end)}
-                  </div>
-                  <div>
-                    <span className="font-semibold text-slate-900">Guests:</span>{" "}
-                    {viewBooking.guestCount}
-                  </div>
-
-                  {viewBooking.guestNames && <div className="pt-3"><div className="font-semibold">Guest names</div><p className="whitespace-pre-wrap">{viewBooking.guestNames}</p></div>}
-                  {viewBooking.note ? (
-                    <div className="pt-2">
-                      <div className="font-semibold text-slate-900">Note</div>
-                      <div className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 whitespace-pre-wrap">
-                        {viewBooking.note}
-                      </div>
-                    </div>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-900">
-                        Check-in
-                      </label>
-                      <input
-                        type="date"
-                        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
-                        value={editStart}
-                        onChange={(e) => setEditStart(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-900">
-                        Check-out
-                      </label>
-                      <input
-                        type="date"
-                        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
-                        value={editEnd}
-                        onChange={(e) => setEditEnd(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <label className="block pt-3 font-semibold">Guest names (optional)<textarea rows={2} maxLength={2000} className="mt-1 w-full rounded-lg border p-3 font-normal" value={editGuestNames} onChange={e=>setEditGuestNames(e.target.value)} /></label>
-                  <div className="pt-3">
-                    <label className="block text-sm font-semibold text-slate-900">
-                      Guests
-                    </label>
-                    <input
-                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
-                      value={editGuestCount}
-                      onChange={(e) => setEditGuestCount(e.target.value)}
-                      inputMode="numeric"
-                    />
-                  </div>
-
-                  <label className="block pt-3 font-semibold">Guest names (optional)<textarea rows={2} maxLength={2000} className="mt-1 w-full rounded-lg border p-3 font-normal" value={editGuestNames} onChange={e=>setEditGuestNames(e.target.value)} /></label>
-                  <div className="pt-3">
-                    <label className="block text-sm font-semibold text-slate-900">
-                      Note (optional)
-                    </label>
-                    <textarea
-                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
-                      rows={3}
-                      value={editNote}
-                      onChange={(e) => setEditNote(e.target.value)}
-                    />
-                  </div>
-                </>
-              )}
+          <div className="absolute inset-0 bg-black/40" onClick={()=>{if(!viewBusy)closeViewModal();}} />
+          <div role="dialog" aria-modal="true" aria-labelledby="stay-dialog-title" className="booking-sheet stay-dialog relative w-full max-w-xl max-h-[90dvh] overflow-y-auto surface p-6">
+            <header className="sheet-heading"><div><p className="sheet-kicker">{selectedHouseName}</p><h2 id="stay-dialog-title">{confirmAction ? (confirmAction==='cancel'?'Cancel this stay?':'Delete this stay?') : isEditingBooking ? 'Edit your stay' : 'Stay details'}</h2></div><button className="sheet-close" aria-label="Close booking details" disabled={viewBusy} onClick={closeViewModal}>×</button></header>
+            <p className="stay-owner">{viewBooking.title}</p>
+            {confirmAction ? <div className="confirmation-copy"><p>{confirmAction==='cancel'?'This stay will be removed from the calendar.':'This permanently deletes the booking and cannot be undone.'}</p><p>{formatDate(viewBooking.start)} – {formatDate(viewBooking.end)}</p></div> : isEditingBooking ? <div className="stay-form">
+              <div className="stay-dates"><label>Arrival<input type="date" value={editStart} onChange={e=>setEditStart(e.target.value)}/></label><label>Departure<input type="date" value={editEnd} onChange={e=>setEditEnd(e.target.value)}/></label></div>
+              <label>Guests<input type="number" min={1} value={editGuestCount} onChange={e=>setEditGuestCount(e.target.value)}/></label>
+              <label>Guest names <span className="optional-label">Optional</span><textarea maxLength={2000} rows={2} value={editGuestNames} onChange={e=>setEditGuestNames(e.target.value)}/></label>
+              <label>Note <span className="optional-label">Optional</span><textarea maxLength={2000} rows={3} value={editNote} onChange={e=>setEditNote(e.target.value)}/></label>
+              {overlapNotice(editStart,editEnd,viewBooking.bookingId)}
+            </div> : <div className="stay-summary"><div className="stay-dates"><div><span>Arrival</span><strong>{formatDate(viewBooking.start)}</strong></div><div><span>Departure</span><strong>{formatDate(viewBooking.end)}</strong></div></div><div className="summary-row"><span>Guests</span><strong>{viewBooking.guestCount}</strong></div>{viewBooking.guestNames && <div className="summary-text"><span>Guest names</span><p>{viewBooking.guestNames}</p></div>}{viewBooking.note && <div className="summary-text"><span>Note</span><p>{viewBooking.note}</p></div>}</div>}
+            {viewError && <p role="alert" className="dialog-error">{viewError}</p>}
+            <div className="sheet-actions">
+              {confirmAction ? <><button className="secondary-action" disabled={viewBusy} onClick={()=>{setConfirmAction(null);setViewError(null);}}>Keep stay</button><button className="danger-action" disabled={viewBusy} onClick={async()=>{setViewBusy(true);setViewError(null);try{if(confirmAction==='cancel')await cancelBooking(viewBooking.bookingId);else await adminDeleteBooking(viewBooking.bookingId);closeViewModal();}catch(e){setViewError((e as Error).message);}finally{setViewBusy(false);}}}>{viewBusy?'Please wait…':confirmAction==='cancel'?'Cancel stay':'Delete permanently'}</button></> : isEditingBooking ? <><button className="secondary-action" disabled={viewBusy} onClick={()=>{setIsEditingBooking(false);setViewError(null);}}>Discard changes</button><button className="primary-action" disabled={viewBusy} onClick={saveEditedBooking}>{viewBusy?'Saving…':'Save changes'}</button></> : <>{canEditViewedBooking ? <button className="primary-action" onClick={()=>{setEditStart(viewBooking.start);setEditEnd(viewBooking.end);setEditGuestCount(String(viewBooking.guestCount));setEditGuestNames(viewBooking.guestNames);setEditNote(viewBooking.note);setViewError(null);setIsEditingBooking(true);}}>Edit stay</button> : <button className="secondary-action" onClick={closeViewModal}>Done</button>}</>}
             </div>
-
-            {isEditingBooking && overlapNotice(editStart,editEnd,viewBooking?.bookingId)}
-            {viewError && (
-              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {viewError}
-              </div>
-            )}
-
-            {!isEditingBooking && !canCancelViewedBooking && !isAdmin && (
-              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                The booking owner or admin can change this stay. Use your personal PIN when signing in on another device.
-              </div>
-            )}
-
-            <div className="mt-7 flex items-center justify-end gap-3">
-              <button
-                className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                onClick={() => {
-                  if (isEditingBooking) {
-                    setIsEditingBooking(false);
-                    setViewError(null);
-                    if (viewBooking) {
-                      setEditStart(viewBooking.start.slice(0, 10));
-                      setEditEnd(viewBooking.end.slice(0, 10));
-                      setEditGuestCount(String(viewBooking.guestCount));
-                      setEditNote(viewBooking.note);
-                      setEditGuestNames(viewBooking.guestNames);
-                    }
-                  } else {
-                    closeViewModal();
-                  }
-                }}
-                disabled={viewBusy}
-              >
-                {isEditingBooking ? "Discard changes" : "Close"}
-              </button>
-
-              {isEditingBooking ? (
-                <button
-                  className="rounded-lg bg-[#679436] px-5 py-2.5 font-semibold text-white hover:brightness-95 disabled:opacity-60"
-                  disabled={viewBusy}
-                  onClick={saveEditedBooking}
-                >
-                  {viewBusy ? "Saving..." : "Save changes"}
-                </button>
-              ) : (
-                <>
-                  {canEditViewedBooking && (
-                    <button
-                      className="rounded-lg bg-[#427aa1] px-5 py-2.5 font-semibold text-white hover:brightness-105 disabled:opacity-60"
-                      disabled={viewBusy}
-                      onClick={() => {
-                        setIsEditingBooking(true);
-                        setViewError(null);
-                        if (viewBooking) {
-                          setEditStart(viewBooking.start.slice(0, 10));
-                          setEditEnd(viewBooking.end.slice(0, 10));
-                          setEditGuestCount(String(viewBooking.guestCount));
-                          setEditNote(viewBooking.note);
-                      setEditGuestNames(viewBooking.guestNames);
-                        }
-                      }}
-                    >
-                      Edit booking
-                    </button>
-                  )}
-
-                  {canCancelViewedBooking && (
-                    <button
-                      className="rounded-lg bg-red-600 px-5 py-2.5 font-semibold text-white hover:brightness-95 disabled:opacity-60"
-                      disabled={viewBusy}
-                      onClick={async () => {
-                        setViewBusy(true);
-                        setViewError(null);
-                        try {
-                          await cancelBooking(viewBooking.bookingId);
-                          closeViewModal();
-                        } catch (e: any) {
-                          setViewError(e?.message ?? "Cancel failed.");
-                        } finally {
-                          setViewBusy(false);
-                        }
-                      }}
-                    >
-                      {viewBusy ? "Cancelling..." : "Cancel booking"}
-                    </button>
-                  )}
-
-                  {isAdmin && (
-                    <button
-                      className="rounded-lg bg-slate-900 px-5 py-2.5 font-semibold text-white hover:brightness-110 disabled:opacity-60"
-                      disabled={viewBusy}
-                      onClick={async () => {
-                        setViewBusy(true);
-                        setViewError(null);
-                        try {
-                          await adminDeleteBooking(viewBooking.bookingId);
-                          closeViewModal();
-                        } catch (e: any) {
-                          setViewError(e?.message ?? "Admin delete failed.");
-                        } finally {
-                          setViewBusy(false);
-                        }
-                      }}
-                    >
-                      {viewBusy ? "Deleting..." : "Admin delete"}
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-
-            <div className="mt-3 text-xs text-slate-400">
-              Tip: press <span className="font-semibold">Esc</span> to close.
-            </div>
+            {!isEditingBooking && !confirmAction && (canCancelViewedBooking || isAdmin) && <div className="destructive-links">{canCancelViewedBooking && <button onClick={()=>setConfirmAction('cancel')}>Cancel stay</button>}{isAdmin && <button onClick={()=>setConfirmAction('delete')}>Delete permanently</button>}</div>}
           </div>
         </div>
       )}
