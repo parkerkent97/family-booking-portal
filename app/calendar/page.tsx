@@ -181,7 +181,7 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (!bookingModalOpen) return;
-    const t = setTimeout(() => guestsInputRef.current?.focus(), 50);
+    const t = setTimeout(() => { if (pendingStart && pendingEnd) guestsInputRef.current?.focus(); }, 50);
     return () => clearTimeout(t);
   }, [bookingModalOpen]);
 
