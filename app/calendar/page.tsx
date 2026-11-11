@@ -39,14 +39,7 @@ type MyUpcomingBooking = {
   guestCount: number;
 };
 
-const USER_COLORS = [
-  "#064789", "#427aa1", "#1e40af", "#0f766e", "#047857",
-  "#679436", "#4d7c0f", "#a5be00", "#15803d", "#166534",
-  "#7c3aed", "#6d28d9", "#9333ea", "#a855f7", "#be185d",
-  "#db2777", "#9f1239", "#b91c1c", "#dc2626", "#ea580c",
-  "#c2410c", "#d97706", "#f59e0b", "#334155", "#475569",
-  "#1f2937", "#0f172a", "#3f3f46", "#525252", "#6b7280",
-];
+const USER_COLORS = ["#48685c", "#596f83", "#846b60", "#777359", "#756583", "#436d70"];
 
 function pickColorForUser(userId: string) {
   let hash = 0;
@@ -380,6 +373,13 @@ export default function CalendarPage() {
     [houses, selectedHouseId]
   );
 
+  const [section, setSection] = useState<'calendar' | 'stays' | 'account'>('calendar');
+  const [onlyMine, setOnlyMine] = useState(false);
+  useEffect(() => {
+    if (section !== 'calendar') return;
+    const frame = requestAnimationFrame(() => calendarRef.current?.getApi().updateSize());
+    return () => cancelAnimationFrame(frame);
+  }, [section]);
   const today = new Date().toLocaleDateString('en-CA');
   const overlapNotice = (start: string | null, end: string | null, except?: number) => {
     const matches = allBookings.filter(b => b.house_id === selectedHouseId && b.id !== except && start && end && b.start_date < end && b.end_date > start);
@@ -394,131 +394,27 @@ export default function CalendarPage() {
     !!viewBooking && !!currentUserId && (viewBooking.createdBy === currentUserId || isAdmin);
 
   return (
-    <main className="min-h-screen p-6 bg-white">
+    <main className="booking-app">
       <Toaster />
-      <div className="max-w-5xl mx-auto">
-        <nav className="mb-5 flex flex-wrap items-center gap-4 text-sm">
-          <span className="font-semibold">{currentName}</span><Link href="/access" className="text-[#064789] underline">My access</Link>
-          {isAdmin && <><Link href="/admin" className="text-[#064789] underline">Admin settings</Link><Link href="/usage" className="text-[#064789] underline">House usage</Link></>}
-          <button onClick={signOutAndGoLogin} className="text-[#064789] underline">Sign out</button>
-        </nav>
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
-              Bay Ave & Bear Ln Calendars
-            </h1>
-            <p className="text-sm sm:text-base mt-2 text-slate-600">
-              Choose a house and book a stay. Select a name on the calendar to see guests and notes.
-            </p>
-          </div>
-
-          <div className="w-full sm:w-72 space-y-2">
-            <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
-                House
-              </label>
-              <select
-                className="w-full rounded-lg border border-slate-200 bg-white p-3 text-slate-900 outline-none focus:ring-2 focus:ring-[#427aa1]/30"
-                value={selectedHouseId ?? ""}
-                onChange={(e) => setSelectedHouseId(Number(e.target.value))}
-              >
-                {houses.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex justify-end">
-              <Link
-                href="/rules"
-                className="text-sm font-semibold text-[#064789] hover:underline"
-              >
-                View house rules
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        <section className="mb-6 space-y-3" aria-label="Upcoming stays at both houses"><h2 className="text-xl font-semibold">Coming up at the houses</h2><div className="grid sm:grid-cols-2 gap-4">{houses.map(h=>{
-          const stays=allBookings.filter(b=>b.house_id===h.id && b.end_date>today).sort((a,b)=>a.start_date.localeCompare(b.start_date)).slice(0,3);
-          return <article key={h.id} className="surface p-4"><h3 className="font-bold mb-2">{h.name}</h3>{stays.length?stays.map(b=><button key={b.id} className="block w-full text-left py-2 border-t text-sm hover:bg-slate-50" onClick={()=>{setSelectedHouseId(h.id);calendarRef.current?.getApi().gotoDate(b.start_date);setViewBooking({bookingId:b.id,title:b.booked_by,start:b.start_date,end:b.end_date,guestCount:b.guest_count,note:b.note||'',guestNames:b.guest_names||'',createdBy:b.created_by});setEditStart(b.start_date);setEditEnd(b.end_date);setEditGuestCount(String(b.guest_count));setEditNote(b.note||'');setEditGuestNames(b.guest_names||'');setViewError(null);setIsEditingBooking(false);setViewModalOpen(true);}}><strong>{b.booked_by}</strong><span className="block text-slate-600">{formatDate(b.start_date)} – {formatDate(b.end_date)}</span></button>):<p className="text-sm text-slate-500">No upcoming stays. Plan a visit!</p>}</article>;
+      <div className="app-shell">
+        <header className="app-header"><div><p className="eyebrow">A place for family</p><h1>Bay Ave &amp; Bear Ln</h1></div><button className="profile-button" aria-label="Open account" onClick={()=>setSection('account')}>{currentName ? currentName.split(' ').map(n=>n[0]).slice(0,2).join('') : '…'}</button></header>
+        <nav className="view-tabs" aria-label="Main navigation">{(['calendar','stays','account'] as const).map(tab=><button key={tab} aria-current={section===tab?'page':undefined} onClick={()=>setSection(tab)}>{tab==='calendar'?'Calendar':tab==='stays'?'Stays':'Account'}</button>)}</nav>
+        {section==='account' && <section className="account-panel"><h2>Your account</h2><p>{currentName}</p><div className="account-links"><Link href="/access">Personal PIN <span>Manage access across devices →</span></Link><Link href="/rules">House rules <span>Everything to know before your stay →</span></Link>{isAdmin && <><Link href="/admin">Admin settings <span>Passwords, rules &amp; bookings →</span></Link><Link href="/usage">House usage <span>See how the houses are used →</span></Link></>}</div><button className="quiet-button" onClick={signOutAndGoLogin}>Sign out</button></section>}
+        <div hidden={section!=='stays'}><div className="section-heading"><h2>Upcoming stays</h2><label className="mine-filter"><input type="checkbox" checked={onlyMine} onChange={e=>setOnlyMine(e.target.checked)}/>Only mine</label></div>
+        <section className="mb-6 space-y-3" aria-label="Upcoming stays at both houses"><div className="grid sm:grid-cols-2 gap-4">{houses.map(h=>{
+          const stays=allBookings.filter(b=>b.house_id===h.id && b.end_date>today && (!onlyMine || b.created_by===currentUserId)).sort((a,b)=>a.start_date.localeCompare(b.start_date));
+          return <article key={h.id} className="surface p-4"><h3 className="font-bold mb-2">{h.name}</h3>{stays.length?stays.map(b=><button key={b.id} className="block w-full text-left py-2 border-t text-sm hover:bg-slate-50" onClick={()=>{setSection('calendar');setSelectedHouseId(h.id);calendarRef.current?.getApi().gotoDate(b.start_date);setViewBooking({bookingId:b.id,title:b.booked_by,start:b.start_date,end:b.end_date,guestCount:b.guest_count,note:b.note||'',guestNames:b.guest_names||'',createdBy:b.created_by});setEditStart(b.start_date);setEditEnd(b.end_date);setEditGuestCount(String(b.guest_count));setEditNote(b.note||'');setEditGuestNames(b.guest_names||'');setViewError(null);setIsEditingBooking(false);setViewModalOpen(true);}}><strong>{b.booked_by}</strong><span className="block text-slate-600">{formatDate(b.start_date)} – {formatDate(b.end_date)}</span></button>):<p className="text-sm text-slate-500">No upcoming stays. Plan a visit!</p>}</article>;
         })}</div></section>
-        <button disabled={!selectedHouseId} onClick={()=>openCreateModal('', '')} className="w-full sm:w-auto mb-5 rounded-xl bg-[#679436] text-white px-6 py-3 font-semibold">Book a stay at {selectedHouseName}</button>
-
-        {myUpcoming.length > 0 && (
-          <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900">
-                  Your upcoming bookings
-                </h2>
-                <p className="mt-1 text-xs text-slate-600">
-                  Showing the next {myUpcoming.length} active booking
-                  {myUpcoming.length === 1 ? "" : "s"}.
-                </p>
-              </div>
-            </div>
-
-            <ul className="mt-3 space-y-2">
-              {myUpcoming.map((b) => {
-                const houseName =
-                  houses.find((h) => h.id === b.houseId)?.name ?? "House";
-
-                return (
-                  <li
-                    key={b.id}
-                    className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-xs sm:text-sm text-slate-700 shadow-sm"
-                  >
-                    <div>
-                      <div className="font-semibold text-slate-900">
-                        {houseName}
-                      </div>
-                      <div className="text-slate-600">
-                        {formatDate(b.start)} – {formatDate(b.end)}
-                      </div>
-                      <div className="text-slate-600">
-                        {b.guestCount} guest{b.guestCount === 1 ? "" : "s"}
-                      </div>
-                    </div>
-
-                    <button
-                      className="ml-3 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:brightness-110 disabled:opacity-60"
-                      disabled={upcomingBusyId === b.id}
-                      onClick={async () => {
-                        setUpcomingBusyId(b.id);
-                        try {
-                          await cancelBooking(b.id);
-                        } catch (e) { toast.error((e as Error).message); } finally {
-                          setUpcomingBusyId(null);
-                        }
-                      }}
-                    >
-                      {upcomingBusyId === b.id ? "Cancelling..." : "Cancel"}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
-
-        <div className="surface p-4">
-          <div className="fc-house-title text-center mt-4 mb-2">
-            <span
-              className="text-2xl sm:text-3xl font-extrabold tracking-tight"
-              style={houseTextStyle(selectedHouseName)}
-            >
-              {selectedHouseName}
-            </span>
-          </div>
-
+        </div>
+        <section hidden={section!=='calendar'} className="calendar-panel">
+          <div className="house-switch" aria-label="Choose a house">{houses.map(h=><button key={h.id} aria-pressed={selectedHouseId===h.id} onClick={()=>setSelectedHouseId(h.id)}>{h.name}</button>)}</div>
+          <div className="calendar-caption"><span>Plan your next visit</span><Link href="/rules">House rules ↗</Link></div>
           <FullCalendar
             ref={calendarRef as any}
             plugins={[dayGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"
-            contentHeight={560}
+            contentHeight={450}
+            headerToolbar={{left:"title",center:"",right:"prev,next"}}
             fixedWeekCount={true}
             eventOverlap={true}
             dayMaxEvents={true}
@@ -538,14 +434,16 @@ export default function CalendarPage() {
               }
             }}
           />
-        </div>
+          <p className="calendar-hint">Select a stay for details. Overlapping visits are welcome.</p>
+        </section>
+        {section!=='account' && <div className="booking-bar"><div><strong>{selectedHouseName || 'Your next stay'}</strong><span>Make time for a getaway</span></div><button disabled={!selectedHouseId} onClick={()=>openCreateModal('', '')}>Book a stay</button></div>}
       </div>
 
       {bookingModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="booking-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closeCreateModal} />
-          <div className="relative w-full max-w-xl max-h-[90dvh] overflow-y-auto surface p-6">
-            <h2 className="text-2xl font-semibold text-slate-900">Create booking</h2>
+          <div className="booking-sheet relative w-full max-w-xl max-h-[90dvh] overflow-y-auto surface p-6">
+            <h2 className="text-2xl font-semibold text-slate-900">Book your stay</h2>
 
             <p className="mt-2 text-slate-600">{selectedHouseName} · Up to 7 nights</p>
             <div className="grid sm:grid-cols-2 gap-3 my-4"><label>Arrival<input aria-label="Arrival" type="date" value={pendingStart || ''} onChange={e=>setPendingStart(e.target.value)} className="block w-full border rounded-lg p-3" /></label><label>Departure<input aria-label="Departure" type="date" min={pendingStart || undefined} value={pendingEnd || ''} onChange={e=>setPendingEnd(e.target.value)} className="block w-full border rounded-lg p-3" /></label></div>
@@ -615,9 +513,9 @@ export default function CalendarPage() {
       )}
 
       {viewModalOpen && viewBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="booking-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closeViewModal} />
-          <div className="relative w-full max-w-xl max-h-[90dvh] overflow-y-auto surface p-6">
+          <div className="booking-sheet relative w-full max-w-xl max-h-[90dvh] overflow-y-auto surface p-6">
             <h2 className="text-2xl font-semibold text-slate-900">Booking details</h2>
 
             <div className="mt-4 space-y-2 text-slate-700">

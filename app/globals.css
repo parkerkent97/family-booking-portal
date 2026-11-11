@@ -1,305 +1,73 @@
 @import "tailwindcss";
-
-/* =====================================
-   Bay Ave & Bear Ln – Clean White Theme
-   ===================================== */
-
-:root {
-  /* Brand palette */
-  --navy: #064789;       /* primary header / anchors */
-  --blue: #427aa1;       /* secondary UI */
-  --ice: #ebf2fa;        /* light background accents */
-  --green: #679436;      /* success */
-  --lime: #a5be00;       /* highlight / today */
-
-  /* Neutrals */
-  --white: #ffffff;
-  --ink: #0f172a;        /* main text */
-  --slate: #334155;      /* secondary text */
-  --border: #e5e7eb;
-
-  /* Surfaces */
-  --surface: #ffffff;
-  --surface-muted: #f8fafc;
-
-  /* Shadows */
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.08);
+:root { --ink:#222522; --border:#e6e7e3; --surface:#fff; --surface-muted:#f7f8f5; --blue:#48685c; --ice:#eef3ef; }
+html,body { min-height:100%; }
+body { margin:0; background:#fff; color:var(--ink); font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; }
+button,a,input,textarea,select { -webkit-tap-highlight-color:transparent; }
+button:not(:disabled),summary { cursor:pointer; }
+button:disabled { opacity:.45; }
+:focus-visible { outline:2px solid #48685c; outline-offset:4px; }
+.surface { background:white; border:1px solid var(--border); border-radius:20px; box-shadow:none; }
+.surface-muted { background:var(--surface-muted); border:1px solid var(--border); border-radius:16px; }
+input,textarea,select { color:var(--ink); background:#fff; border-color:var(--border); font-size:16px; }
+.booking-app { padding:32px 24px 120px; background:#fff; min-height:100vh; }
+.app-shell { max-width:900px; margin:auto; }
+.app-header { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:24px; }
+.eyebrow { color:#777d76; font-size:11px; text-transform:uppercase; letter-spacing:.16em; margin:0 0 7px; }
+.app-header h1 { font-size:26px; font-weight:650; letter-spacing:-.045em; margin:0; }
+.profile-button { width:42px; height:42px; border-radius:50%; background:#f1f3ef; font-size:12px; font-weight:600; color:#456151; flex-shrink:0; }
+.view-tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:24px; gap:28px; }
+.view-tabs button { padding:12px 0; color:#777d76; font-size:14px; border-bottom:2px solid transparent; }
+.view-tabs button[aria-current] { color:#222522; border-color:#222522; font-weight:600; }
+.house-switch { display:flex; background:#f3f4f1; border-radius:14px; padding:4px; margin-bottom:18px; gap:4px; }
+.house-switch button { flex:1; min-height:44px; border-radius:11px; color:#737970; font-size:14px; font-weight:600; }
+.house-switch button[aria-pressed=true] { background:white; color:#222522; box-shadow:0 1px 4px #0000000d; }
+.calendar-caption { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#7c8179; margin:0 0 26px; }
+.calendar-caption a { color:#444c43; text-decoration:underline; text-underline-offset:3px; }
+.calendar-hint { font-size:12px; color:#7c8179; margin-top:16px; }
+.booking-bar { position:fixed; bottom:0; left:0; right:0; background:#ffffffed; backdrop-filter:blur(16px); border-top:1px solid var(--border); padding:16px max(24px,calc((100vw - 900px)/2)) calc(16px + env(safe-area-inset-bottom)); display:flex; align-items:center; justify-content:space-between; gap:12px; z-index:20; }
+.booking-bar strong { display:block; font-size:14px; font-weight:600; }
+.booking-bar span { display:block; font-size:12px; color:#777d76; margin-top:3px; }
+.booking-bar button { background:#304e40; color:white; padding:14px 24px; border-radius:12px; font-size:14px; font-weight:600; white-space:nowrap; }
+.section-heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; gap:12px; }
+.section-heading h2,.account-panel h2 { font-size:22px; font-weight:600; letter-spacing:-.03em; }
+.mine-filter { display:flex; align-items:center; gap:8px; font-size:12px; color:#62685f; }
+.account-panel>p { color:#737970; margin:8px 0 28px; }
+.account-links { border-top:1px solid var(--border); margin-bottom:24px; }
+.account-links a { display:block; padding:20px 0; border-bottom:1px solid var(--border); font-size:15px; font-weight:500; }
+.account-links span { display:block; font-size:12px; color:#7c8179; margin-top:5px; font-weight:400; }
+.quiet-button { font-size:14px; text-decoration:underline; text-underline-offset:4px; }
+.fc { font-family:inherit; --fc-border-color:#eceee9; --fc-today-bg-color:#f4f7f1; --fc-highlight-color:#e8eee6; }
+.fc .fc-toolbar-title { font-size:20px; font-weight:600; letter-spacing:-.035em; }
+.fc .fc-button { color:#30372e!important; background:white!important; border:1px solid #e6e7e3!important; border-radius:50%!important; width:36px; height:36px; padding:0!important; box-shadow:none!important; margin-left:8px!important; }
+.fc .fc-button:hover { background:#f3f4f1!important; }
+.fc .fc-button-group { gap:0; }
+.fc .fc-scrollgrid { border-radius:12px; overflow:hidden; }
+.fc .fc-col-header-cell { border:0; }
+.fc .fc-col-header-cell-cushion { color:#899082; font-size:10px; font-weight:500; text-transform:uppercase; padding:12px 0; }
+.fc .fc-daygrid-day-number { color:#454c40; font-size:12px; padding:7px; }
+.fc .fc-day-other .fc-daygrid-day-top { opacity:.3; }
+.fc .fc-daygrid-day.fc-day-today { background:#f1f5ee; }
+.fc .fc-daygrid-event { padding:2px 4px; margin:1px 0; border-radius:4px; font-size:10px; line-height:1.2; box-shadow:none; }
+.fc .fc-daygrid-event.overlapping-booking { padding:0 4px; margin:0; }
+.fc .fc-event-main { color:white; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fc .fc-event-title { font-weight:500; }
+.fc .fc-daygrid-more-link { font-size:10px; color:#486048; }
+.booking-sheet h2 { font-size:24px; letter-spacing:-.035em; font-weight:600; }
+.booking-sheet label { font-size:13px; }
+.booking-sheet button { min-height:44px; }
+.booking-sheet button[class*="bg-[#679436]"] { background:#304e40; }
+@media(max-width:640px) {
+ .booking-app { padding:24px 16px 120px; }
+ .app-header { margin-bottom:18px; }
+ .app-header h1 { font-size:23px; }
+ .view-tabs { margin-bottom:20px; }
+ .calendar-caption { margin-bottom:20px; font-size:11px; }
+ .fc .fc-toolbar-title { font-size:18px; }
+ .fc .fc-toolbar.fc-header-toolbar { flex-direction:row; margin-bottom:16px; }
+ .fc .fc-daygrid-day-number { padding:5px; font-size:11px; }
+ .booking-bar { padding-left:16px; padding-right:16px; }
+ .booking-bar span { font-size:11px; }
+ .booking-overlay { align-items:flex-end; padding:0; }
+ .booking-sheet { border-radius:24px 24px 0 0; max-height:92dvh; padding:24px 20px calc(24px + env(safe-area-inset-bottom)); }
 }
-
-/* =====================================
-   Base
-   ===================================== */
-
-html,
-body {
-  height: 100%;
-}
-
-body {
-  background: var(--white);
-  color: var(--ink);
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji",
-    "Segoe UI Emoji";
-}
-
-/* =====================================
-   Utility Surfaces (use these in JSX)
-   ===================================== */
-
-.surface {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow-md);
-}
-
-.surface-muted {
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-}
-
-/* =====================================
-   FullCalendar – Clean, readable, solid
-   ===================================== */
-
-.fc {
-  font-family: inherit;
-}
-
-/* Toolbar */
-.fc .fc-toolbar-title {
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--ink);
-}
-
-/* Buttons */
-.fc .fc-button {
-  background: var(--white) !important;
-  color: var(--ink) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 10px !important;
-  font-weight: 600 !important;
-  padding: 0.45rem 0.75rem !important;
-  box-shadow: var(--shadow-sm) !important;
-}
-
-.fc .fc-button:hover {
-  background: var(--ice) !important;
-}
-
-.fc .fc-button-primary:not(:disabled).fc-button-active {
-  background: var(--blue) !important;
-  color: white !important;
-  border-color: var(--blue) !important;
-}
-
-/* Calendar container */
-.fc .fc-view-harness,
-.fc .fc-scrollgrid {
-  background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-/* Day headers */
-.fc .fc-col-header-cell {
-  background: var(--surface-muted);
-  border-bottom: 1px solid var(--border);
-}
-
-.fc .fc-col-header-cell-cushion {
-  padding: 10px 0;
-  color: var(--slate);
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-}
-
-/* Day cells */
-.fc .fc-daygrid-day {
-  border: 1px solid var(--border);
-  background: var(--white);
-}
-
-.fc .fc-daygrid-day-number {
-  padding: 8px;
-  font-weight: 600;
-  color: var(--slate);
-}
-
-/* Today highlight */
-.fc .fc-daygrid-day.fc-day-today {
-  background: rgba(165, 190, 0, 0.12);
-  box-shadow: inset 0 0 0 2px rgba(165, 190, 0, 0.45);
-}
-
-/* Selection drag */
-.fc .fc-highlight {
-  background: rgba(66, 122, 161, 0.18);
-}
-
-/* ===============================
-   EVENTS — LET INLINE COLORS WIN
-   =============================== */
-.fc .fc-event,
-.fc .fc-daygrid-block-event {
-  border-radius: 9999px;      /* keep the pill shape */
-  padding: 6px 12px;
-  margin: 4px 6px;
-  border-width: 1px;
-  border-style: solid;
-  /* NOTE: no background / border-color here */
-  box-shadow: var(--shadow-sm);
-}
-
-.fc .fc-event-title {
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-/* Hover: just a subtle brightness, don't override color */
-.fc .fc-event:hover,
-.fc .fc-daygrid-block-event:hover {
-  filter: brightness(1.05);
-}
-
-
-/* Hover */
-.fc .fc-event:hover {
-  background: var(--blue) !important;
-}
-
-/* >>> NEW: tighter event “bubbles” so more fit per day <<< */
-
-/* Compact pill-style events in the month grid */
-.fc .fc-daygrid-event {
-  border-radius: 9999px;
-  padding: 2px 6px;         /* less vertical padding */
-  margin: 1px 0;            /* tighter stacking */
-  font-size: 0.7rem;        /* slightly smaller text */
-  line-height: 1.1;
-}
-
-/* Keep pills to a single line with ellipsis */
-.fc .fc-daygrid-event .fc-event-main {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Overlapping stays use slimmer bars within the fixed month grid. */
-.fc .fc-daygrid-event.overlapping-booking {
-  padding: 0 4px;
-  margin: 0;
-  font-size: 0.625rem;
-  line-height: 1.2;
-}
-
-/* =====================================
-   Optional: Cancel / destructive cue
-   (future use)
-   ===================================== */
-
-.fc-event.cancelled {
-  background: #cbd5e1 !important;
-  color: #1f2937 !important;
-}
-/* =====================================
-   TEXT VISIBILITY GUARANTEES
-   ===================================== */
-
-/* Force readable defaults */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  color: #0f172a; /* dark ink */
-}
-
-p,
-span,
-label,
-div {
-  color: #334155; /* slate */
-}
-
-/* Muted helper text */
-.text-muted,
-.fc .fc-col-header-cell-cushion,
-.fc .fc-daygrid-day-number {
-  color: #475569 !important;
-}
-
-/* Ensure calendar titles & labels are visible */
-.fc,
-.fc * {
-  color: #0f172a;
-}
-
-/* Event text stays white */
-.fc .fc-event,
-.fc .fc-event * {
-  color: #ffffff !important;
-}
-
-/* Dropdowns & inputs */
-select,
-input,
-textarea {
-  background: #ffffff;
-  color: #0f172a;
-  border: 1px solid #e5e7eb;
-}
-
-select option {
-  color: #0f172a;
-}
-
-/* House label / small UI text */
-label {
-  font-weight: 600;
-  color: #334155;
-}
-
-/* Mobile tweaks for FullCalendar */
-@media (max-width: 640px) {
-  /* Stack the header toolbar on small screens */
-  .fc .fc-toolbar.fc-header-toolbar {
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  /* Slightly smaller month title on phones */
-  .fc .fc-toolbar-title {
-    font-size: 1.1rem;
-  }
-
-  /* Smaller day numbers so the grid doesn’t feel cramped */
-  .fc .fc-daygrid-day-number {
-    font-size: 0.75rem;
-    padding: 2px 4px;
-  }
-
-  /* Slightly reduce cell height */
-  .fc .fc-daygrid-day-frame {
-    padding: 2px;
-  }
-
-  /* Make event pills tighter on mobile */
-  .fc .fc-daygrid-event {
-    margin: 1px 0;
-    padding: 1px 3px;
-    font-size: 0.7rem;
-  }
-}
-
-
-
+@media(prefers-reduced-motion:no-preference) { button,a { transition:background-color .15s,color .15s; } }
