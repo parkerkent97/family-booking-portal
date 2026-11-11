@@ -133,9 +133,13 @@ export default function CalendarPage() {
     }).catch(e => toast.error(e.message));
   }, [refreshKey]);
   useEffect(() => {
-    setEvents(allBookings.filter(b => b.house_id === selectedHouseId).map(b => {
+    const houseBookings = allBookings.filter(b => b.house_id === selectedHouseId);
+    setEvents(houseBookings.map(b => {
       const color = profiles.find(p => p.id === b.created_by)?.color || pickColorForUser(b.created_by || String(b.id));
+      const overlaps = houseBookings.some(other => other.id !== b.id &&
+        other.start_date < b.end_date && other.end_date > b.start_date);
       return { id: String(b.id), title: `${b.booked_by} — ${b.guest_count} guest${b.guest_count === 1 ? '' : 's'}`,
+        classNames: overlaps ? ['overlapping-booking'] : [],
         start: b.start_date, end: b.end_date, allDay: true, backgroundColor: color, borderColor: color, textColor: '#ffffff',
         extendedProps: { bookingId: b.id, createdBy: b.created_by, guestCount: b.guest_count, note: b.note || '' } };
     }));
@@ -494,9 +498,10 @@ export default function CalendarPage() {
             ref={calendarRef as any}
             plugins={[dayGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"
-            height="auto"
+            contentHeight={560}
+            fixedWeekCount={true}
             eventOverlap={true}
-            dayMaxEvents={3}
+            dayMaxEvents={true}
             eventDisplay="block"
             events={events}
             selectable={true}

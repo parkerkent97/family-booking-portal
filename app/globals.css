@@ -192,6 +192,14 @@ body {
   text-overflow: ellipsis;
 }
 
+/* Overlapping stays use slimmer bars within the fixed month grid. */
+.fc .fc-daygrid-event.overlapping-booking {
+  padding: 0 4px;
+  margin: 0;
+  font-size: 0.625rem;
+  line-height: 1.2;
+}
+
 /* =====================================
    Optional: Cancel / destructive cue
    (future use)
@@ -292,7 +300,6 @@ label {
     font-size: 0.7rem;
   }
 }
-
 
 
 
