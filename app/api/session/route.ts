@@ -17,7 +17,18 @@ export async function POST(req: Request) {
     if (!valid) return NextResponse.json({ error: 'Incorrect password.' }, { status: 401 });
     await setSession({ id: await visitorId(), admin: admin === true, named: false, version: config.version });
     return NextResponse.json({ ok: true });
-  } catch { return NextResponse.json({ error: 'Sign-in is not configured yet. Please contact the admin.' }, { status: 503 }); }
+  } catch (error) {
+    const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : 'unknown';
+    console.error('Login configuration check failed', {
+      databaseConfigured: !!process.env.DATABASE_URL,
+      sessionSecretValid: (process.env.SESSION_SECRET?.length ?? 0) >= 32,
+      familyPasswordConfigured: !!process.env.FAMILY_PASSWORD,
+      adminPasswordConfigured: !!process.env.ADMIN_PASSWORD,
+      databaseErrorCode: /^[A-Z0-9_]{1,30}$/.test(code) ? code : 'unknown',
+      errorType: error instanceof Error ? error.name : 'unknown',
+    });
+    return NextResponse.json({ error: 'Sign-in is temporarily unavailable. Please try again shortly.' }, { status: 503 });
+  }
 }
 export async function DELETE(req: Request) {
   if (!sameOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
