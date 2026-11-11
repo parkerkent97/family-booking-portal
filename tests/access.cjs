@@ -170,3 +170,12 @@ test('PIN creation, replacement, rate limiting, and protected rules', async()=>{
   assert.equal((await pins.POST(request({pin:'123456'}))).status,429);
   assert.equal((await names.POST(request({firstName:'Pat',lastName:'Kent',recover:true,pin:'123456'}))).status,429);
 });
+
+test('optional guest names are trimmed, may be cleared, and reject invalid input',()=>{
+  const base={start_date:'2027-01-01',end_date:'2027-01-03',guest_count:2};
+  assert.equal(bookingValues(base).guest_names,null);
+  assert.equal(bookingValues({...base,guest_names:' Alex, Jamie '}).guest_names,'Alex, Jamie');
+  assert.equal(bookingValues({...base,guest_names:'  '}).guest_names,null);
+  assert.throws(()=>bookingValues({...base,guest_names:42}));
+  assert.throws(()=>bookingValues({...base,guest_names:'x'.repeat(2001)}));
+});

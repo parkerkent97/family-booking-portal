@@ -21,6 +21,7 @@ type Booking = {
   end_date: string; // YYYY-MM-DD (exclusive)
   status: "active" | "cancelled";
   note?: string | null;
+  guest_names?: string | null;
 };
 
 type Profile = {
@@ -88,6 +89,8 @@ export default function CalendarPage() {
   const [pendingStart, setPendingStart] = useState<string | null>(null);
   const [pendingEnd, setPendingEnd] = useState<string | null>(null);
   const [guestCountInput, setGuestCountInput] = useState("2");
+  const [guestNames, setGuestNames] = useState("");
+  const [editGuestNames, setEditGuestNames] = useState("");
   const [noteInput, setNoteInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -103,6 +106,7 @@ export default function CalendarPage() {
     end: string;
     guestCount: number;
     note: string;
+    guestNames: string;
     createdBy: string;
   } | null>(null);
 
@@ -141,7 +145,7 @@ export default function CalendarPage() {
       return { id: String(b.id), title: b.booked_by,
         classNames: overlaps ? ['overlapping-booking'] : [],
         start: b.start_date, end: b.end_date, allDay: true, backgroundColor: color, borderColor: color, textColor: '#ffffff',
-        extendedProps: { bookingId: b.id, createdBy: b.created_by, guestCount: b.guest_count, note: b.note || '' } };
+        extendedProps: { bookingId: b.id, createdBy: b.created_by, guestCount: b.guest_count, guestNames: b.guest_names || '', note: b.note || '' } };
     }));
   }, [allBookings, profiles, selectedHouseId]);
   const signOutAndGoLogin = async () => {
@@ -158,6 +162,7 @@ export default function CalendarPage() {
     setPendingEnd(null);
     setGuestCountInput("2");
     setNoteInput("");
+    setGuestNames("");
     setModalError(null);
     calendarRef.current?.getApi()?.unselect();
   };
@@ -167,6 +172,7 @@ export default function CalendarPage() {
     setPendingEnd(endStr);
     setGuestCountInput("2");
     setNoteInput("");
+    setGuestNames("");
     setModalError(null);
     setBookingModalOpen(true);
   };
@@ -233,7 +239,7 @@ export default function CalendarPage() {
       const note = noteInput.trim() ? noteInput.trim() : null;
 
       await api('/api/bookings', { action: 'create', house_id: selectedHouseId,
-        guest_count: guestCount, start_date: pendingStart, end_date: pendingEnd, note });
+        guest_count: guestCount, start_date: pendingStart, end_date: pendingEnd, note, guest_names: guestNames });
 
       toast.success("Booking created!");
       closeCreateModal();
@@ -299,7 +305,7 @@ export default function CalendarPage() {
       const noteClean = editNote.trim() ? editNote.trim() : null;
 
       await api('/api/bookings', { action: 'edit', bookingId: viewBooking.bookingId,
-        start_date: editStart, end_date: editEnd, guest_count: guests, note: noteClean });
+        start_date: editStart, end_date: editEnd, guest_count: guests, note: noteClean, guest_names: editGuestNames });
 
       toast.success("Booking updated.");
       setRefreshKey((k) => k + 1);
@@ -311,6 +317,7 @@ export default function CalendarPage() {
         end: editEnd,
         guestCount: guests,
         note: noteClean ?? "",
+        guestNames: editGuestNames.trim(),
       });
     } catch (e) {
       setViewError((e as Error).message);
@@ -349,6 +356,7 @@ export default function CalendarPage() {
       end,
       guestCount,
       note,
+      guestNames: String(arg.event.extendedProps.guestNames || ""),
       createdBy,
     });
 
@@ -356,6 +364,7 @@ export default function CalendarPage() {
     setEditEnd(end.slice(0, 10));
     setEditGuestCount(String(guestCount));
     setEditNote(note);
+    setEditGuestNames(String(arg.event.extendedProps.guestNames || ""));
 
     setViewModalOpen(true);
   };
@@ -434,7 +443,7 @@ export default function CalendarPage() {
 
         <section className="mb-6 space-y-3" aria-label="Upcoming stays at both houses"><h2 className="text-xl font-semibold">Coming up at the houses</h2><div className="grid sm:grid-cols-2 gap-4">{houses.map(h=>{
           const stays=allBookings.filter(b=>b.house_id===h.id && b.end_date>today).sort((a,b)=>a.start_date.localeCompare(b.start_date)).slice(0,3);
-          return <article key={h.id} className="surface p-4"><h3 className="font-bold mb-2">{h.name}</h3>{stays.length?stays.map(b=><button key={b.id} className="block w-full text-left py-2 border-t text-sm hover:bg-slate-50" onClick={()=>{setSelectedHouseId(h.id);calendarRef.current?.getApi().gotoDate(b.start_date);setViewBooking({bookingId:b.id,title:b.booked_by,start:b.start_date,end:b.end_date,guestCount:b.guest_count,note:b.note||'',createdBy:b.created_by});setEditStart(b.start_date);setEditEnd(b.end_date);setEditGuestCount(String(b.guest_count));setEditNote(b.note||'');setViewError(null);setIsEditingBooking(false);setViewModalOpen(true);}}><strong>{b.booked_by}</strong><span className="block text-slate-600">{formatDate(b.start_date)} – {formatDate(b.end_date)}</span></button>):<p className="text-sm text-slate-500">No upcoming stays. Plan a visit!</p>}</article>;
+          return <article key={h.id} className="surface p-4"><h3 className="font-bold mb-2">{h.name}</h3>{stays.length?stays.map(b=><button key={b.id} className="block w-full text-left py-2 border-t text-sm hover:bg-slate-50" onClick={()=>{setSelectedHouseId(h.id);calendarRef.current?.getApi().gotoDate(b.start_date);setViewBooking({bookingId:b.id,title:b.booked_by,start:b.start_date,end:b.end_date,guestCount:b.guest_count,note:b.note||'',guestNames:b.guest_names||'',createdBy:b.created_by});setEditStart(b.start_date);setEditEnd(b.end_date);setEditGuestCount(String(b.guest_count));setEditNote(b.note||'');setEditGuestNames(b.guest_names||'');setViewError(null);setIsEditingBooking(false);setViewModalOpen(true);}}><strong>{b.booked_by}</strong><span className="block text-slate-600">{formatDate(b.start_date)} – {formatDate(b.end_date)}</span></button>):<p className="text-sm text-slate-500">No upcoming stays. Plan a visit!</p>}</article>;
         })}</div></section>
         <button disabled={!selectedHouseId} onClick={()=>openCreateModal('', '')} className="w-full sm:w-auto mb-5 rounded-xl bg-[#679436] text-white px-6 py-3 font-semibold">Book a stay at {selectedHouseName}</button>
 
@@ -560,6 +569,7 @@ export default function CalendarPage() {
               </p>
             </div>
 
+            <label className="block mt-5 font-semibold">Guest names (optional)<textarea maxLength={2000} rows={2} className="mt-2 w-full rounded-lg border p-3 font-normal" placeholder="e.g., Alex Smith, Jamie Smith" value={guestNames} onChange={e=>setGuestNames(e.target.value)} /><span className="block text-xs font-normal text-slate-500">Separate names with commas or new lines. Visible to everyone with access to the site.</span></label>
             <div className="mt-5">
               <label className="block text-sm font-semibold text-slate-900">
                 Note (optional)
@@ -630,6 +640,7 @@ export default function CalendarPage() {
                     {viewBooking.guestCount}
                   </div>
 
+                  {viewBooking.guestNames && <div className="pt-3"><div className="font-semibold">Guest names</div><p className="whitespace-pre-wrap">{viewBooking.guestNames}</p></div>}
                   {viewBooking.note ? (
                     <div className="pt-2">
                       <div className="font-semibold text-slate-900">Note</div>
@@ -666,6 +677,7 @@ export default function CalendarPage() {
                     </div>
                   </div>
 
+                  <label className="block pt-3 font-semibold">Guest names (optional)<textarea rows={2} maxLength={2000} className="mt-1 w-full rounded-lg border p-3 font-normal" value={editGuestNames} onChange={e=>setEditGuestNames(e.target.value)} /></label>
                   <div className="pt-3">
                     <label className="block text-sm font-semibold text-slate-900">
                       Guests
@@ -678,6 +690,7 @@ export default function CalendarPage() {
                     />
                   </div>
 
+                  <label className="block pt-3 font-semibold">Guest names (optional)<textarea rows={2} maxLength={2000} className="mt-1 w-full rounded-lg border p-3 font-normal" value={editGuestNames} onChange={e=>setEditGuestNames(e.target.value)} /></label>
                   <div className="pt-3">
                     <label className="block text-sm font-semibold text-slate-900">
                       Note (optional)
@@ -718,6 +731,7 @@ export default function CalendarPage() {
                       setEditEnd(viewBooking.end.slice(0, 10));
                       setEditGuestCount(String(viewBooking.guestCount));
                       setEditNote(viewBooking.note);
+                      setEditGuestNames(viewBooking.guestNames);
                     }
                   } else {
                     closeViewModal();
@@ -750,6 +764,7 @@ export default function CalendarPage() {
                           setEditEnd(viewBooking.end.slice(0, 10));
                           setEditGuestCount(String(viewBooking.guestCount));
                           setEditNote(viewBooking.note);
+                      setEditGuestNames(viewBooking.guestNames);
                         }
                       }}
                     >

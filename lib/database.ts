@@ -15,6 +15,7 @@ const schema = [
   `CREATE TABLE IF NOT EXISTS site_settings (id integer PRIMARY KEY CHECK(id=1), password_hash text, version integer NOT NULL DEFAULT 1)`,
   `CREATE TABLE IF NOT EXISTS login_attempts (key text PRIMARY KEY, window_start timestamptz NOT NULL, attempts integer NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS bookings (id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY, house_id integer NOT NULL REFERENCES houses(id), visitor_id uuid NOT NULL REFERENCES visitors(id), booked_by text NOT NULL, guest_count integer NOT NULL CHECK(guest_count>0), start_date date NOT NULL, end_date date NOT NULL, status text NOT NULL DEFAULT 'active' CHECK(status IN ('active','cancelled')), note text, cancelled_at timestamptz, CHECK(end_date>start_date AND end_date-start_date<=7))`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS guest_names text`,
   `CREATE INDEX IF NOT EXISTS bookings_active_house ON bookings(house_id,start_date) WHERE status='active'`,
   `INSERT INTO houses(id,name) VALUES(1,'Bay Ave'),(2,'Bear Ln') ON CONFLICT DO NOTHING`,
   `INSERT INTO site_settings(id) VALUES(1) ON CONFLICT DO NOTHING`,
