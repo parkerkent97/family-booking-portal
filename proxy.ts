@@ -6,4 +6,4 @@ export async function proxy(req: NextRequest) {
   if (['/admin', '/usage'].includes(req.nextUrl.pathname) && !s.admin) return NextResponse.redirect(new URL('/calendar', req.url));
   return NextResponse.next();
 }
-export const config = { matcher: ['/calendar/:path*', '/rules/:path*', '/usage/:path*', '/admin/:path*'] };
+export const config = { matcher: ['/access/:path*', '/calendar/:path*', '/rules/:path*', '/usage/:path*', '/admin/:path*'] };

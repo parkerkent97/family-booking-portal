@@ -45,10 +45,10 @@ export function sameOrigin(req: Request) {
   const origin = req.headers.get('origin');
   return origin === new URL(req.url).origin;
 }
-export async function rateLimit(req: Request) {
+export async function rateLimit(req: Request, scope = 'login') {
   // Atomic, shared across server instances; IP is trusted only from the hosting proxy.
   const ip = req.headers.get('x-vercel-forwarded-for') || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
-  const key = createHmac('sha256', secret()).update(ip).digest('hex');
+  const key = createHmac('sha256', secret()).update(scope + ':' + ip).digest('hex');
   await query("DELETE FROM login_attempts WHERE window_start < now()-interval '1 day'");
   const rows = await query(`INSERT INTO login_attempts AS a(key,window_start,attempts) VALUES($1,now(),1)
     ON CONFLICT(key) DO UPDATE SET
@@ -67,4 +67,8 @@ export async function visitorId() {
   const fresh = randomUUID();
   jar.set('family_visitor', fresh + '.' + sign('visitor:' + fresh), { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 365 * 86400 });
   return fresh;
+}
+
+export async function rememberVisitor(id: string) {
+  (await cookies()).set('family_visitor', id + '.' + sign('visitor:' + id), { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 365 * 86400 });
 }

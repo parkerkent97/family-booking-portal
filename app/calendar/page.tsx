@@ -138,7 +138,7 @@ export default function CalendarPage() {
       const color = profiles.find(p => p.id === b.created_by)?.color || pickColorForUser(b.created_by || String(b.id));
       const overlaps = houseBookings.some(other => other.id !== b.id &&
         other.start_date < b.end_date && other.end_date > b.start_date);
-      return { id: String(b.id), title: `${b.booked_by} — ${b.guest_count} guest${b.guest_count === 1 ? '' : 's'}`,
+      return { id: String(b.id), title: b.booked_by,
         classNames: overlaps ? ['overlapping-booking'] : [],
         start: b.start_date, end: b.end_date, allDay: true, backgroundColor: color, borderColor: color, textColor: '#ffffff',
         extendedProps: { bookingId: b.id, createdBy: b.created_by, guestCount: b.guest_count, note: b.note || '' } };
@@ -202,7 +202,7 @@ export default function CalendarPage() {
   // CREATE BOOKING
   // -------------------------------
   const confirmCreateBooking = async () => {
-    if (!selectedHouseId || !pendingStart || !pendingEnd) return;
+    if (!selectedHouseId || !pendingStart || !pendingEnd) { setModalError('Choose arrival and departure dates.'); return; }
     if (saving) return;
 
     setModalError(null);
@@ -371,6 +371,11 @@ export default function CalendarPage() {
     [houses, selectedHouseId]
   );
 
+  const today = new Date().toLocaleDateString('en-CA');
+  const overlapNotice = (start: string | null, end: string | null, except?: number) => {
+    const matches = allBookings.filter(b => b.house_id === selectedHouseId && b.id !== except && start && end && b.start_date < end && b.end_date > start);
+    return matches.length > 0 && <div role="status" className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900"><strong>Sharing the house</strong><p>{[...new Set(matches.map(b=>b.booked_by))].join(', ')} also booked these dates. You can still book.</p></div>;
+  };
   const selectedHouseName = selectedHouse?.name ?? "";
 
   const canCancelViewedBooking =
@@ -384,7 +389,7 @@ export default function CalendarPage() {
       <Toaster />
       <div className="max-w-5xl mx-auto">
         <nav className="mb-5 flex flex-wrap items-center gap-4 text-sm">
-          <span className="font-semibold">{currentName}</span>
+          <span className="font-semibold">{currentName}</span><Link href="/access" className="text-[#064789] underline">My access</Link>
           {isAdmin && <><Link href="/admin" className="text-[#064789] underline">Admin settings</Link><Link href="/usage" className="text-[#064789] underline">House usage</Link></>}
           <button onClick={signOutAndGoLogin} className="text-[#064789] underline">Sign out</button>
         </nav>
@@ -394,7 +399,7 @@ export default function CalendarPage() {
               Bay Ave & Bear Ln Calendars
             </h1>
             <p className="text-sm sm:text-base mt-2 text-slate-600">
-              Choose a house to view bookings. Click and drag to book your stay. Click a booking to view details.
+              Choose a house and book a stay. Select a name on the calendar to see guests and notes.
             </p>
           </div>
 
@@ -426,6 +431,12 @@ export default function CalendarPage() {
             </div>
           </div>
         </div>
+
+        <section className="mb-6 space-y-3" aria-label="Upcoming stays at both houses"><h2 className="text-xl font-semibold">Coming up at the houses</h2><div className="grid sm:grid-cols-2 gap-4">{houses.map(h=>{
+          const stays=allBookings.filter(b=>b.house_id===h.id && b.end_date>today).sort((a,b)=>a.start_date.localeCompare(b.start_date)).slice(0,3);
+          return <article key={h.id} className="surface p-4"><h3 className="font-bold mb-2">{h.name}</h3>{stays.length?stays.map(b=><button key={b.id} className="block w-full text-left py-2 border-t text-sm hover:bg-slate-50" onClick={()=>{setSelectedHouseId(h.id);calendarRef.current?.getApi().gotoDate(b.start_date);setViewBooking({bookingId:b.id,title:b.booked_by,start:b.start_date,end:b.end_date,guestCount:b.guest_count,note:b.note||'',createdBy:b.created_by});setEditStart(b.start_date);setEditEnd(b.end_date);setEditGuestCount(String(b.guest_count));setEditNote(b.note||'');setViewError(null);setIsEditingBooking(false);setViewModalOpen(true);}}><strong>{b.booked_by}</strong><span className="block text-slate-600">{formatDate(b.start_date)} – {formatDate(b.end_date)}</span></button>):<p className="text-sm text-slate-500">No upcoming stays. Plan a visit!</p>}</article>;
+        })}</div></section>
+        <button disabled={!selectedHouseId} onClick={()=>openCreateModal('', '')} className="w-full sm:w-auto mb-5 rounded-xl bg-[#679436] text-white px-6 py-3 font-semibold">Book a stay at {selectedHouseName}</button>
 
         {myUpcoming.length > 0 && (
           <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -524,19 +535,12 @@ export default function CalendarPage() {
       {bookingModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closeCreateModal} />
-          <div className="relative w-full max-w-xl surface p-6">
+          <div className="relative w-full max-w-xl max-h-[90dvh] overflow-y-auto surface p-6">
             <h2 className="text-2xl font-semibold text-slate-900">Create booking</h2>
 
-            <div className="mt-4 space-y-2 text-slate-700">
-              <div>
-                <span className="font-semibold text-slate-900">Check-in:</span>{" "}
-                {pendingStart ? formatDate(pendingStart) : ""}
-              </div>
-              <div>
-                <span className="font-semibold text-slate-900">Check-out:</span>{" "}
-                {pendingEnd ? formatDate(pendingEnd) : ""}
-              </div>
-            </div>
+            <p className="mt-2 text-slate-600">{selectedHouseName} · Up to 7 nights</p>
+            <div className="grid sm:grid-cols-2 gap-3 my-4"><label>Arrival<input aria-label="Arrival" type="date" value={pendingStart || ''} onChange={e=>setPendingStart(e.target.value)} className="block w-full border rounded-lg p-3" /></label><label>Departure<input aria-label="Departure" type="date" min={pendingStart || undefined} value={pendingEnd || ''} onChange={e=>setPendingEnd(e.target.value)} className="block w-full border rounded-lg p-3" /></label></div>
+            {overlapNotice(pendingStart,pendingEnd)}
 
             <div className="mt-6">
               <label className="block text-sm font-semibold text-slate-900">Guests</label>
@@ -603,7 +607,7 @@ export default function CalendarPage() {
       {viewModalOpen && viewBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closeViewModal} />
-          <div className="relative w-full max-w-xl surface p-6">
+          <div className="relative w-full max-w-xl max-h-[90dvh] overflow-y-auto surface p-6">
             <h2 className="text-2xl font-semibold text-slate-900">Booking details</h2>
 
             <div className="mt-4 space-y-2 text-slate-700">
@@ -689,6 +693,7 @@ export default function CalendarPage() {
               )}
             </div>
 
+            {isEditingBooking && overlapNotice(editStart,editEnd,viewBooking?.bookingId)}
             {viewError && (
               <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {viewError}
@@ -697,7 +702,7 @@ export default function CalendarPage() {
 
             {!isEditingBooking && !canCancelViewedBooking && !isAdmin && (
               <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                The person who booked on this browser, or the admin, can change this booking.
+                The booking owner or admin can change this stay. Use your personal PIN when signing in on another device.
               </div>
             )}
 

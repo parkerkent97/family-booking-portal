@@ -12,6 +12,10 @@ process.env.FAMILY_PASSWORD = 'test-family-password';
 process.env.ADMIN_PASSWORD = 'test-admin-password';
 process.env.DATABASE_URL = 'postgres://test-only';
 async function query(sql, params = []) {
+  if (sql.startsWith('SELECT id,pin_hash')) return rows.pinVisitor ? [rows.pinVisitor] : [];
+  if (sql.startsWith('SELECT pin_hash')) return [{pin_hash:rows.pinHash||null}];
+  if (sql.startsWith('UPDATE visitors SET pin_hash')) { rows.pinHash=params[1]; return [{id:params[0]}]; }
+  if (sql.startsWith('UPDATE houses')) { writes.push({sql,params}); return [{id:params[0]}]; }
   if (sql.startsWith('SELECT password_hash')) return [config];
   if (sql.startsWith('DELETE FROM login_attempts')) return [];
   if (sql.startsWith('INSERT INTO login_attempts')) return [{ attempts: allowLogin ? 1 : 16 }];
@@ -137,4 +141,32 @@ test('booking owner can cancel; admin can manage legacy bookings', async () => {
   await auth.setSession({ id: 'admin', named: true, admin: true, version: 1 });
   rows.bookings = { id: 2, visitor_id: null, status: 'active' };
   assert.equal((await bookings.POST(request({ action: 'cancel', bookingId: 2 }))).status, 200);
+});
+
+test('personal PIN restores ownership without granting admin access and survives logout', async () => {
+  await login.POST(request({password:process.env.FAMILY_PASSWORD}));
+  rows.pinVisitor={id:'saved-visitor',pin_hash:auth.passwordHash('12345678')};
+  assert.equal((await names.POST(request({firstName:'Pat',lastName:'Kent',recover:true,pin:'87654321'}))).status,400);
+  assert.equal((await names.POST(request({firstName:'Pat',lastName:'Kent',recover:true,pin:'12345678'}))).status,200);
+  assert.equal((await auth.session()).id,'saved-visitor');
+  assert.equal((await auth.session()).admin,false);
+  await login.DELETE(request({}));
+  assert.equal(await auth.visitorId(),'saved-visitor');
+});
+test('PIN creation, replacement, rate limiting, and protected rules', async()=>{
+  const pins=load('app/api/pin/route.ts'),rules=load('app/api/rules/route.ts');
+  assert.equal((await pins.POST(request({pin:'123456'}))).status,401);
+  await auth.setSession({id:'owner',admin:false,named:true,version:1});
+  assert.equal((await pins.POST(request({pin:'123'}))).status,400);
+  assert.equal((await pins.POST(request({pin:'123456'}))).status,200);
+  assert.equal((await pins.POST(request({pin:'654321',currentPin:'000000'}))).status,400);
+  assert.equal((await pins.POST(request({pin:'654321',currentPin:'123456'}))).status,200);
+  assert.equal(auth.checkPassword('654321',rows.pinHash),true);
+  assert.equal((await rules.POST(request({houseId:1,rules:'Quiet after 10'}))).status,403);
+  await auth.setSession({id:'admin',admin:true,named:true,version:1});
+  assert.equal((await rules.POST(request({houseId:1,rules:'Quiet after 10'}))).status,200);
+  assert.equal((await rules.POST(request({houseId:1,rules:'x'.repeat(20001)}))).status,400);
+  allowLogin=false;
+  assert.equal((await pins.POST(request({pin:'123456'}))).status,429);
+  assert.equal((await names.POST(request({firstName:'Pat',lastName:'Kent',recover:true,pin:'123456'}))).status,429);
 });

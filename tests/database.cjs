@@ -33,6 +33,8 @@ test('fresh Postgres initializes once, keeps bookings, validates constraints, an
     assert.equal((await query('SELECT * FROM bookings')).length,0);
     const id='00000000-0000-4000-8000-000000000001';
     await query('INSERT INTO visitors VALUES($1,$2,$3)',[id,'Pat','Kent']);
+    await query('UPDATE visitors SET pin_hash=$2 WHERE id=$1',[id,'test-hash']);
+    await assert.rejects(query('INSERT INTO visitors(id,first_name,last_name,pin_hash) VALUES($1,$2,$3,$4)',['00000000-0000-4000-8000-000000000002','pat','KENT','other-hash']));
     const create=`INSERT INTO bookings(house_id,visitor_id,booked_by,guest_count,start_date,end_date,note) SELECT h.id,v.id,v.first_name || ' ' || v.last_name,$3,$4::date,$5::date,$6 FROM visitors v JOIN houses h ON h.id=$1 WHERE v.id=$2 RETURNING id`;
     const created=await query(create,[1,id,2,'2027-01-01','2027-01-04',null]);
     assert.equal(created.length,1);
