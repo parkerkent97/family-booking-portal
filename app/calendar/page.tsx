@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
+import { stayCalendar, staySummary } from "@/lib/stay-export";
 import FullCalendar from "@fullcalendar/react";
 import type { DateSelectArg, EventClickArg, EventInput } from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -529,6 +530,16 @@ export default function CalendarPage() {
               <label>Note <span className="optional-label">Optional</span><textarea maxLength={2000} rows={3} value={editNote} onChange={e=>setEditNote(e.target.value)}/></label>
               {overlapNotice(editStart,editEnd,viewBooking.bookingId)}
             </div> : <div className="stay-summary"><div className="stay-dates"><div><span>Arrival</span><strong>{formatDate(viewBooking.start)}</strong></div><div><span>Departure</span><strong>{formatDate(viewBooking.end)}</strong></div></div><div className="summary-row"><span>Guests</span><strong>{viewBooking.guestCount}</strong></div>{viewBooking.guestNames && <div className="summary-text"><span>Guest names</span><p>{viewBooking.guestNames}</p></div>}{viewBooking.note && <div className="summary-text"><span>Note</span><p>{viewBooking.note}</p></div>}</div>}
+            {!isEditingBooking && !confirmAction && <div className="stay-export"><div className="stay-export-buttons"><button onClick={()=>{
+              const stay={bookingId:viewBooking.bookingId,house:selectedHouseName,name:viewBooking.title,start:viewBooking.start.slice(0,10),end:viewBooking.end.slice(0,10),guestCount:viewBooking.guestCount,guestNames:viewBooking.guestNames};
+              const url=URL.createObjectURL(new Blob([stayCalendar(stay)],{type:'text/calendar;charset=utf-8'}));
+              const link=document.createElement('a');link.href=url;link.download=`${selectedHouseName.toLowerCase().replace(/[^a-z0-9]+/g,'-')}-${stay.start}.ics`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+              toast.success('Calendar file ready. Open it in your calendar app.');
+            }}>Add to calendar ↗</button><button onClick={async()=>{
+              const text=staySummary({bookingId:viewBooking.bookingId,house:selectedHouseName,name:viewBooking.title,start:viewBooking.start.slice(0,10),end:viewBooking.end.slice(0,10),guestCount:viewBooking.guestCount,guestNames:viewBooking.guestNames});
+              try{if(navigator.share){await navigator.share({title:`Stay at ${selectedHouseName}`,text});}else{await navigator.clipboard.writeText(text);toast.success('Stay summary copied.');}}
+              catch(e){if((e as Error).name!=='AbortError')setViewError('Sharing is unavailable in this browser. Try another browser or device.');}
+            }}>Share a stay ↗</button></div><p>Calendar downloads are a one-time copy, not a live sync. Sharing includes dates and guest names; private notes are left out.</p></div>}
             {viewError && <p role="alert" className="dialog-error">{viewError}</p>}
             <div className="sheet-actions">
               {confirmAction ? <><button className="secondary-action" disabled={viewBusy} onClick={()=>{setConfirmAction(null);setViewError(null);}}>Keep stay</button><button className="danger-action" disabled={viewBusy} onClick={async()=>{setViewBusy(true);setViewError(null);try{if(confirmAction==='cancel')await cancelBooking(viewBooking.bookingId);else await adminDeleteBooking(viewBooking.bookingId);closeViewModal();}catch(e){setViewError((e as Error).message);}finally{setViewBusy(false);}}}>{viewBusy?'Please wait…':confirmAction==='cancel'?'Cancel stay':'Delete permanently'}</button></> : isEditingBooking ? <><button className="secondary-action" disabled={viewBusy} onClick={()=>{setIsEditingBooking(false);setViewError(null);}}>Discard changes</button><button className="primary-action" disabled={viewBusy} onClick={saveEditedBooking}>{viewBusy?'Saving…':'Save changes'}</button></> : <>{canEditViewedBooking ? <button className="primary-action" onClick={()=>{setEditStart(viewBooking.start);setEditEnd(viewBooking.end);setEditGuestCount(String(viewBooking.guestCount));setEditGuestNames(viewBooking.guestNames);setEditNote(viewBooking.note);setViewError(null);setIsEditingBooking(true);}}>Edit stay</button> : <button className="secondary-action" onClick={closeViewModal}>Done</button>}</>}

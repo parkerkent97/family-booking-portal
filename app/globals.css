@@ -164,3 +164,7 @@ input,textarea,select { color:var(--ink); background:#fff; border-color:var(--bo
 .usage-explainer p { font-size:12px; line-height:1.7; color:#7b8177; margin-top:8px; }
 .usage-message { padding:30px 0; font-size:14px; }
 @media(max-width:640px) { .usage-heading { align-items:flex-start; flex-direction:column; gap:14px; } .usage-cards { grid-template-columns:1fr; } .usage-card { padding:16px; } .usage-card p { margin:8px 0; } }
+.stay-export { margin-top:20px; }
+.stay-export-buttons { display:flex; gap:10px; }
+.stay-export-buttons button { flex:1; border:1px solid var(--border); border-radius:12px; padding:10px; font-size:12px; color:var(--house-accent,#304e40); background:white; }
+.stay-export>p { font-size:11px; line-height:1.6; color:#7b8177; margin-top:10px; }
