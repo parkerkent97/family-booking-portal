@@ -105,7 +105,7 @@ export default function CalendarPage() {
   } | null>(null);
 
   // EDIT mode state for the view modal
-  const [confirmAction, setConfirmAction] = useState<'cancel' | 'delete' | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'cancel' | null>(null);
   const [isEditingBooking, setIsEditingBooking] = useState(false);
   const [editStart, setEditStart] = useState("");
   const [editEnd, setEditEnd] = useState("");
@@ -325,11 +325,6 @@ export default function CalendarPage() {
   // -------------------------------
   // ADMIN: PERMANENT DELETE BOOKING
   // -------------------------------
-  const adminDeleteBooking = async (bookingId: number) => {
-    await api('/api/bookings', { action: 'delete', bookingId });
-    toast.success("Booking permanently deleted.");
-    setRefreshKey((k) => k + 1);
-  };
 
   // -------------------------------
   // EVENT CLICK -> OPEN VIEW MODAL
@@ -498,7 +493,7 @@ export default function CalendarPage() {
                 onClick={closeCreateModal}
                 disabled={saving}
               >
-                Cancel
+                Close
               </button>
 
               <button
@@ -521,9 +516,9 @@ export default function CalendarPage() {
         <div className="booking-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={()=>{if(!viewBusy)closeViewModal();}} />
           <div role="dialog" aria-modal="true" aria-labelledby="stay-dialog-title" className="booking-sheet stay-dialog relative w-full max-w-xl max-h-[90dvh] overflow-y-auto surface p-6">
-            <header className="sheet-heading"><div><p className="sheet-kicker">{selectedHouseName}</p><h2 id="stay-dialog-title">{confirmAction ? (confirmAction==='cancel'?'Cancel this stay?':'Delete this stay?') : isEditingBooking ? 'Edit your stay' : 'Stay details'}</h2></div><button className="sheet-close" aria-label="Close booking details" disabled={viewBusy} onClick={closeViewModal}>×</button></header>
+            <header className="sheet-heading"><div><p className="sheet-kicker">{selectedHouseName}</p><h2 id="stay-dialog-title">{confirmAction ? 'Cancel this stay?' : isEditingBooking ? 'Edit your stay' : 'Stay details'}</h2></div><button className="sheet-close" aria-label="Close booking details" disabled={viewBusy} onClick={closeViewModal}>×</button></header>
             <p className="stay-owner">{viewBooking.title}</p>
-            {confirmAction ? <div className="confirmation-copy"><p>{confirmAction==='cancel'?'This stay will be removed from the calendar.':'This permanently deletes the booking and cannot be undone.'}</p><p>{formatDate(viewBooking.start)} – {formatDate(viewBooking.end)}</p></div> : isEditingBooking ? <div className="stay-form">
+            {confirmAction ? <div className="confirmation-copy"><p>This stay will be removed from the calendar.</p><p>{formatDate(viewBooking.start)} – {formatDate(viewBooking.end)}</p></div> : isEditingBooking ? <div className="stay-form">
               <div className="stay-dates"><label>Arrival<input type="date" value={editStart} onChange={e=>setEditStart(e.target.value)}/></label><label>Departure<input type="date" value={editEnd} onChange={e=>setEditEnd(e.target.value)}/></label></div>
               <label>Guests<input type="number" min={1} value={editGuestCount} onChange={e=>setEditGuestCount(e.target.value)}/></label>
               <label>Guest names <span className="optional-label">Optional</span><textarea maxLength={2000} rows={2} value={editGuestNames} onChange={e=>setEditGuestNames(e.target.value)}/></label>
@@ -534,17 +529,17 @@ export default function CalendarPage() {
               const stay={bookingId:viewBooking.bookingId,house:selectedHouseName,name:viewBooking.title,start:viewBooking.start.slice(0,10),end:viewBooking.end.slice(0,10),guestCount:viewBooking.guestCount,guestNames:viewBooking.guestNames};
               const url=URL.createObjectURL(new Blob([stayCalendar(stay)],{type:'text/calendar;charset=utf-8'}));
               const link=document.createElement('a');link.href=url;link.download=`${selectedHouseName.toLowerCase().replace(/[^a-z0-9]+/g,'-')}-${stay.start}.ics`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-              toast.success('Calendar file ready. Open it in your calendar app.');
-            }}>Add to calendar ↗</button><button onClick={async()=>{
+              toast.success('Calendar file ready. Open it with Apple Calendar.');
+            }}>Add to Apple Calendar ↗</button><button onClick={async()=>{
               const text=staySummary({bookingId:viewBooking.bookingId,house:selectedHouseName,name:viewBooking.title,start:viewBooking.start.slice(0,10),end:viewBooking.end.slice(0,10),guestCount:viewBooking.guestCount,guestNames:viewBooking.guestNames});
               try{if(navigator.share){await navigator.share({title:`Stay at ${selectedHouseName}`,text});}else{await navigator.clipboard.writeText(text);toast.success('Stay summary copied.');}}
               catch(e){if((e as Error).name!=='AbortError')setViewError('Sharing is unavailable in this browser. Try another browser or device.');}
-            }}>Share a stay ↗</button></div><p>Calendar downloads are a one-time copy, not a live sync. Sharing includes dates and guest names; private notes are left out.</p></div>}
+            }}>Share a stay ↗</button></div><p>Downloads an Apple Calendar-compatible .ics file. Your device chooses which app opens it. This is a one-time copy, not a live sync. Sharing includes dates and guest names; private notes are left out.</p></div>}
             {viewError && <p role="alert" className="dialog-error">{viewError}</p>}
             <div className="sheet-actions">
-              {confirmAction ? <><button className="secondary-action" disabled={viewBusy} onClick={()=>{setConfirmAction(null);setViewError(null);}}>Keep stay</button><button className="danger-action" disabled={viewBusy} onClick={async()=>{setViewBusy(true);setViewError(null);try{if(confirmAction==='cancel')await cancelBooking(viewBooking.bookingId);else await adminDeleteBooking(viewBooking.bookingId);closeViewModal();}catch(e){setViewError((e as Error).message);}finally{setViewBusy(false);}}}>{viewBusy?'Please wait…':confirmAction==='cancel'?'Cancel stay':'Delete permanently'}</button></> : isEditingBooking ? <><button className="secondary-action" disabled={viewBusy} onClick={()=>{setIsEditingBooking(false);setViewError(null);}}>Discard changes</button><button className="primary-action" disabled={viewBusy} onClick={saveEditedBooking}>{viewBusy?'Saving…':'Save changes'}</button></> : <>{canEditViewedBooking ? <button className="primary-action" onClick={()=>{setEditStart(viewBooking.start);setEditEnd(viewBooking.end);setEditGuestCount(String(viewBooking.guestCount));setEditGuestNames(viewBooking.guestNames);setEditNote(viewBooking.note);setViewError(null);setIsEditingBooking(true);}}>Edit stay</button> : <button className="secondary-action" onClick={closeViewModal}>Done</button>}</>}
+              {confirmAction ? <><button className="secondary-action" disabled={viewBusy} onClick={()=>{setConfirmAction(null);setViewError(null);}}>Keep stay</button><button className="danger-action" disabled={viewBusy} onClick={async()=>{setViewBusy(true);setViewError(null);try{await cancelBooking(viewBooking.bookingId);closeViewModal();}catch(e){setViewError((e as Error).message);}finally{setViewBusy(false);}}}>{viewBusy?'Cancelling…':'Yes, cancel stay'}</button></> : isEditingBooking ? <><button className="secondary-action" disabled={viewBusy} onClick={()=>{setIsEditingBooking(false);setViewError(null);}}>Discard changes</button><button className="primary-action" disabled={viewBusy} onClick={saveEditedBooking}>{viewBusy?'Saving…':'Save changes'}</button></> : <>{canEditViewedBooking ? <button className="primary-action" onClick={()=>{setEditStart(viewBooking.start);setEditEnd(viewBooking.end);setEditGuestCount(String(viewBooking.guestCount));setEditGuestNames(viewBooking.guestNames);setEditNote(viewBooking.note);setViewError(null);setIsEditingBooking(true);}}>Edit stay</button> : <button className="secondary-action" onClick={closeViewModal}>Done</button>}</>}
             </div>
-            {!isEditingBooking && !confirmAction && (canCancelViewedBooking || isAdmin) && <div className="destructive-links">{canCancelViewedBooking && <button onClick={()=>setConfirmAction('cancel')}>Cancel stay</button>}{isAdmin && <button onClick={()=>setConfirmAction('delete')}>Delete permanently</button>}</div>}
+            {!isEditingBooking && !confirmAction && (canCancelViewedBooking || isAdmin) && <div className="destructive-links">{canCancelViewedBooking && <button onClick={()=>setConfirmAction('cancel')}>Cancel stay</button>}</div>}
           </div>
         </div>
       )}
