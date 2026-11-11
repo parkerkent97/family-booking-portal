@@ -71,3 +71,27 @@ input,textarea,select { color:var(--ink); background:#fff; border-color:var(--bo
  .booking-sheet { border-radius:24px 24px 0 0; max-height:92dvh; padding:24px 20px calc(24px + env(safe-area-inset-bottom)); }
 }
 @media(prefers-reduced-motion:no-preference) { button,a { transition:background-color .15s,color .15s; } }
+
+/* House accents stay quiet so names and dates remain the focus. */
+.booking-app[data-house-theme="coast"] {
+ --house-accent:#285e70; --house-soft:#edf5f6; --house-today:#eef6f5;
+ --house-line:#dbe8e9; --house-muted:#567681; --house-wash:#f7fbfb;
+}
+.booking-app[data-house-theme="cabin"] {
+ --house-accent:#465b43; --house-soft:#f1f2eb; --house-today:#f4f2e8;
+ --house-line:#e4e5d9; --house-muted:#71765e; --house-wash:#faf9f5;
+}
+.booking-app[data-house-theme] { background:linear-gradient(180deg,var(--house-wash),#fff 360px); }
+.booking-app .profile-button { color:var(--house-accent); background:var(--house-soft); }
+.booking-app .house-switch { background:var(--house-soft); }
+.booking-app .house-switch button[aria-pressed=true] { color:var(--house-accent); box-shadow:0 1px 4px #0000000d,inset 0 0 0 1px var(--house-line); }
+.booking-app .view-tabs button[aria-current] { color:var(--house-accent); border-color:var(--house-accent); }
+.booking-app .booking-bar button,
+.booking-app .booking-sheet button[class*="bg-[#679436]"] { background:var(--house-accent); }
+.booking-app .booking-bar { border-color:var(--house-line); }
+.booking-app .fc { --fc-highlight-color:var(--house-soft); }
+.booking-app .fc .fc-daygrid-day.fc-day-today { background:var(--house-today); }
+.booking-app .fc .fc-button:hover { background:var(--house-soft)!important; }
+.booking-app .fc .fc-daygrid-more-link { color:var(--house-accent); }
+.house-mood { display:inline-flex; align-items:center; gap:7px; color:var(--house-muted); }
+.house-mood svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }

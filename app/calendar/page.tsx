@@ -386,6 +386,7 @@ export default function CalendarPage() {
     return matches.length > 0 && <div role="status" className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900"><strong>Sharing the house</strong><p>{[...new Set(matches.map(b=>b.booked_by))].join(', ')} also booked these dates. You can still book.</p></div>;
   };
   const selectedHouseName = selectedHouse?.name ?? "";
+  const houseTheme = selectedHouseName.toLowerCase().includes("bear") ? "cabin" : "coast";
 
   const canCancelViewedBooking =
     !!viewBooking && !!currentUserId && (viewBooking.createdBy === currentUserId || isAdmin);
@@ -394,7 +395,7 @@ export default function CalendarPage() {
     !!viewBooking && !!currentUserId && (viewBooking.createdBy === currentUserId || isAdmin);
 
   return (
-    <main className="booking-app">
+    <main className="booking-app" data-house-theme={houseTheme}>
       <Toaster />
       <div className="app-shell">
         <header className="app-header"><div><p className="eyebrow">A place for family</p><h1>Bay Ave &amp; Bear Ln</h1></div><button className="profile-button" aria-label="Open account" onClick={()=>setSection('account')}>{currentName ? currentName.split(' ').map(n=>n[0]).slice(0,2).join('') : '…'}</button></header>
@@ -408,7 +409,7 @@ export default function CalendarPage() {
         </div>
         <section hidden={section!=='calendar'} className="calendar-panel">
           <div className="house-switch" aria-label="Choose a house">{houses.map(h=><button key={h.id} aria-pressed={selectedHouseId===h.id} onClick={()=>setSelectedHouseId(h.id)}>{h.name}</button>)}</div>
-          <div className="calendar-caption"><span>Plan your next visit</span><Link href="/rules">House rules ↗</Link></div>
+          <div className="calendar-caption"><span className="house-mood">{houseTheme === 'coast' ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 15c3-4 5 4 8 0s5 4 8 0 4 0 4 0M2 20c3-4 5 4 8 0s5 4 8 0 4 0 4 0"/><circle cx="16" cy="6" r="3"/></svg> : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m2 20 8-15 5 9 3-5 4 11H2Zm5-9 3 2 3-2"/></svg>}{houseTheme === 'coast' ? 'Slow days by the shore' : 'A little closer to the mountains'}</span><Link href="/rules">House rules ↗</Link></div>
           <FullCalendar
             ref={calendarRef as any}
             plugins={[dayGridPlugin, interactionPlugin]}
